@@ -11,6 +11,7 @@ import { lockBackoffice } from '../services/backofficeAccess'
 
 const navItems = [
   { path: '/', label: 'Accueil', icon: HomeIcon },
+  { path: '/dashboard', label: 'Dashboard', icon: DashboardIcon },
   { path: '/exemple', label: 'Exemple', icon: ComponentIcon },
   { path: '/tickets', label: 'Ticket', icon: TicketIcon },
   { path: '/reset', label: 'Reset', icon: ResetIcon },
@@ -124,6 +125,19 @@ function HomeIcon({ className }) {
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
         d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0a1 1 0 01-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1h-2z"
+      />
+    </svg>
+  )
+}
+
+function DashboardIcon({ className }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.5}
+        d="M3 3h18v18H3V3zm4 14v-6m5 6V7m5 10v-4"
       />
     </svg>
   )

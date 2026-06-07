@@ -1,14 +1,21 @@
-$headers = @{ "App-Token" = "QpfnykNe8f90CTtDNpd9cKWaF5r5Nuz4ESATe3c4" }
-$sec = ConvertTo-SecureString "glpi" -AsPlainText -Force
-$cred = New-Object System.Management.Automation.PSCredential("glpi", $sec)
-
-Invoke-RestMethod -Method Get -Uri "http://localhost/glpi/apirest.php/initSession" -Headers $headers -Credential $cred
+est ce que tu peut me lister toute les type d'element qu'on  peut manipuler actuelement?
 
 
-$headers = @{
-  "App-Token" = "QpfnykNe8f90CTtDNpd9cKWaF5r5Nuz4ESATe3c4"
-  "Authorization" = "Kw0ri1EQHSMhaXz4GZFCkAyVewX6Eh8x7k6baXZc"
-  "Content-Type" = "application/json"
-}
+lister seulemnt les actifs qui sont dans l’API GLPI disponible mais pas encore utilisés.
 
-Invoke-RestMethod -Method Get -Uri "http://localhost/glpi/apirest.php/initSession" -Headers $headers
+est ce qu'il y a d'autre dans l'API v1, je parle des actifs uniquement
+
+fais sortir la liste “actifs” en version strict (uniquement les classes d’actifs principales GLPI) vs version large (incluant tous les objets réseau/infra ci-dessus).
+
+
+est ce qu'on peut utiliser les API v1 et v2.3 en meme temps lors de l'import car je veux ajouter les elements suivant ce qui est afficher dans la liste deroulant des elements dans l'interface de glpi lors de la creation d'une ticket:
+
+- Baies
+
+- Base de donnee
+
+- Chassis
+
+- Logiciel
+
+- Salle Serveur
