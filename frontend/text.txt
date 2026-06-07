@@ -1,0 +1,14 @@
+$headers = @{ "App-Token" = "QpfnykNe8f90CTtDNpd9cKWaF5r5Nuz4ESATe3c4" }
+$sec = ConvertTo-SecureString "glpi" -AsPlainText -Force
+$cred = New-Object System.Management.Automation.PSCredential("glpi", $sec)
+
+Invoke-RestMethod -Method Get -Uri "http://localhost/glpi/apirest.php/initSession" -Headers $headers -Credential $cred
+
+
+$headers = @{
+  "App-Token" = "QpfnykNe8f90CTtDNpd9cKWaF5r5Nuz4ESATe3c4"
+  "Authorization" = "Kw0ri1EQHSMhaXz4GZFCkAyVewX6Eh8x7k6baXZc"
+  "Content-Type" = "application/json"
+}
+
+Invoke-RestMethod -Method Get -Uri "http://localhost/glpi/apirest.php/initSession" -Headers $headers

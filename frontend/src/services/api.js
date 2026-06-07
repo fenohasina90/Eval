@@ -201,7 +201,7 @@ export function clearSession() {
 // ═════════════════════════════════════════════════════════════════════
 
 const LEGACY_BASE_URL = import.meta.env.VITE_LEGACY_BASE_URL || "/apirest";
-const LEGACY_APP_TOKEN = import.meta.env.VITE_GLPI_APP_TOKEN || "";
+const LEGACY_APP_TOKEN = import.meta.env.VITE_LEGACY_APP_TOKEN || import.meta.env.VITE_GLPI_APP_TOKEN || "";
 const LEGACY_USER_TOKEN = import.meta.env.VITE_LEGACY_USER_TOKEN || "";
 const LEGACY_CREDENTIALS = {
   login: import.meta.env.VITE_LEGACY_LOGIN || "glpi",
@@ -216,32 +216,81 @@ let sessionToken = null;
  */
 async function initSession() {
   try {
-    const config = {
+    if (!LEGACY_APP_TOKEN) {
+      throw new Error(
+        "Legacy initSession failed: App-Token manquant. Renseigne VITE_LEGACY_APP_TOKEN (ou VITE_GLPI_APP_TOKEN) avec un App-Token valide configuré dans GLPI (Configuration > Générale > API)."
+      );
+    }
+
+    const baseHeaders = {
+      "Content-Type": "application/json",
+      "App-Token": LEGACY_APP_TOKEN,
+    };
+
+    const withUserToken = () => ({
       headers: {
-        "Content-Type": "application/json",
-        "App-Token": LEGACY_APP_TOKEN,
+        ...baseHeaders,
+        Authorization: `user_token ${LEGACY_USER_TOKEN}`,
       },
+    });
+
+    const withCredentials = () => ({
+      headers: baseHeaders,
+      auth: {
+        username: LEGACY_CREDENTIALS.login,
+        password: LEGACY_CREDENTIALS.password,
+      },
+    });
+
+    const tryInit = async (config) => {
+      const { data } = await axios.get(`${LEGACY_BASE_URL}/initSession`, config);
+      sessionToken = data.session_token;
+      return sessionToken;
     };
 
     if (LEGACY_USER_TOKEN) {
-      config.headers.Authorization = `user_token ${LEGACY_USER_TOKEN}`;
-    } else {
-      config.auth = {
-        username: LEGACY_CREDENTIALS.login,
-        password: LEGACY_CREDENTIALS.password,
-      };
+      return await tryInit(withUserToken());
     }
 
-    const { data } = await axios.get(`${LEGACY_BASE_URL}/initSession`, config);
-    sessionToken = data.session_token;
-    return sessionToken;
+    return await tryInit(withCredentials());
   } catch (error) {
     const data = error?.response?.data;
     const code = Array.isArray(data) ? data[0] : null;
 
+    if (code === "ERROR_GLPI_LOGIN_USER_TOKEN" && LEGACY_USER_TOKEN) {
+      try {
+        return await (async () => {
+          const { data } = await axios.get(`${LEGACY_BASE_URL}/initSession`, {
+            headers: {
+              "Content-Type": "application/json",
+              "App-Token": LEGACY_APP_TOKEN,
+            },
+            auth: {
+              username: LEGACY_CREDENTIALS.login,
+              password: LEGACY_CREDENTIALS.password,
+            },
+          });
+          sessionToken = data.session_token;
+          return sessionToken;
+        })();
+      } catch (fallbackError) {
+        throw new Error(
+          "Legacy initSession failed: user_token invalide. Vérifie VITE_LEGACY_USER_TOKEN ou utilise l'auth login/password (si autorisée côté GLPI).",
+          { cause: fallbackError }
+        );
+      }
+    }
+
     if (code === "ERROR_LOGIN_WITH_CREDENTIALS_DISABLED" && !LEGACY_USER_TOKEN) {
       throw new Error(
         "Legacy initSession failed: initSession avec identifiants est désactivé. Renseigne VITE_LEGACY_USER_TOKEN (token API utilisateur) ou réactive l'option côté GLPI.",
+        { cause: error }
+      );
+    }
+
+    if (code === "ERROR_WRONG_APP_TOKEN_PARAMETER") {
+      throw new Error(
+        "Legacy initSession failed: App-Token invalide. Vérifie VITE_LEGACY_APP_TOKEN (ou VITE_GLPI_APP_TOKEN) et l'API client configuré dans GLPI.",
         { cause: error }
       );
     }
@@ -291,7 +340,6 @@ function processQueueLegacy(error, token = null) {
 legacy.interceptors.response.use(
   (response) => response,
   async (error) => {
-    console.error("Legacy 401:", error.response?.data);
     const originalRequest = error.config;
 
     if (
