@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Alert, Badge, Button, Card, Input, Label, P, Table, Tbody, Td, Th, Thead, Tr } from '../../components'
 import { importAssetsFromRows, parseCsvText, REQUIRED_COLUMNS } from '../../services/importDataService'
 import { importTicketsFromRows, REQUIRED_TICKET_COLUMNS } from '../../services/importTicketCsvService'
+import { importTicketCostsFromRows, REQUIRED_TICKET_COST_COLUMNS } from '../../services/importTicketCostsCsvService'
 
 function computeStats(results) {
   const total = results.length
@@ -77,11 +78,21 @@ export default function ImportData() {
   const [ticketProgress, setTicketProgress] = useState({ done: 0, total: 0 })
   const [ticketResults, setTicketResults] = useState([])
 
+  const [costFile, setCostFile] = useState(null)
+  const [costRows, setCostRows] = useState([])
+  const [costError, setCostError] = useState('')
+  const [isCostParsing, setIsCostParsing] = useState(false)
+  const [isCostImporting, setIsCostImporting] = useState(false)
+  const [costProgress, setCostProgress] = useState({ done: 0, total: 0 })
+  const [costResults, setCostResults] = useState([])
+
   const hasAssetRows = assetRows.length > 0
   const hasTicketRows = ticketRows.length > 0
+  const hasCostRows = costRows.length > 0
 
   const requiredAssetColumns = REQUIRED_COLUMNS
   const requiredTicketColumns = REQUIRED_TICKET_COLUMNS
+  const requiredCostColumns = REQUIRED_TICKET_COST_COLUMNS
 
   async function onPickAssetFile(e) {
     const selected = e.target.files?.[0] ?? null
@@ -141,7 +152,7 @@ export default function ImportData() {
 
   async function onImportAll(e) {
     e.preventDefault()
-    if ((!hasAssetRows && !hasTicketRows) || isAssetImporting || isTicketImporting) return
+    if ((!hasAssetRows && !hasTicketRows && !hasCostRows) || isAssetImporting || isTicketImporting || isCostImporting) return
 
     if (hasAssetRows) {
       await onImportAssets(e)
@@ -149,6 +160,10 @@ export default function ImportData() {
 
     if (hasTicketRows) {
       await onImportTickets(e)
+    }
+
+    if (hasCostRows) {
+      await onImportCosts(e)
     }
   }
 
@@ -209,10 +224,67 @@ export default function ImportData() {
     }
   }
 
+  async function onPickCostFile(e) {
+    const selected = e.target.files?.[0] ?? null
+    setCostFile(selected)
+    setCostRows([])
+    setCostResults([])
+    setCostProgress({ done: 0, total: 0 })
+    setCostError('')
+
+    if (!selected) return
+
+    setIsCostParsing(true)
+    try {
+      const text = await selected.text()
+      const parsed = parseCsvText(text)
+      if (parsed.length === 0) {
+        setCostError('Fichier CSV vide ou illisible.')
+        return
+      }
+
+      const first = parsed[0] || {}
+      const missing = requiredCostColumns.filter((col) => !(col in first))
+      if (missing.length > 0) {
+        setCostError(`Colonnes manquantes: ${missing.join(', ')}`)
+        return
+      }
+
+      setCostRows(parsed)
+    } catch (err) {
+      setCostError(err?.message || 'Erreur lors de la lecture du fichier.')
+    } finally {
+      setIsCostParsing(false)
+    }
+  }
+
+  async function onImportCosts(e) {
+    e.preventDefault()
+    if (!hasCostRows || isCostImporting) return
+
+    setIsCostImporting(true)
+    setCostError('')
+    setCostResults([])
+    setCostProgress({ done: 0, total: costRows.length })
+
+    try {
+      const out = await importTicketCostsFromRows(costRows, {
+        onProgress: ({ done, total }) => setCostProgress({ done, total }),
+        onResults: (partial) => setCostResults(partial),
+      })
+      setCostResults(out)
+    } catch (err) {
+      setCostError(err?.message || 'Erreur lors de la préparation de l’import.')
+    } finally {
+      setIsCostImporting(false)
+    }
+  }
+
   const assetStats = useMemo(() => computeStats(assetResults), [assetResults])
   const ticketStats = useMemo(() => computeStats(ticketResults), [ticketResults])
-  const isBusy = isAssetParsing || isTicketParsing || isAssetImporting || isTicketImporting
-  const canSubmit = !isBusy && (hasAssetRows || hasTicketRows)
+  const costStats = useMemo(() => computeStats(costResults), [costResults])
+  const isBusy = isAssetParsing || isTicketParsing || isCostParsing || isAssetImporting || isTicketImporting || isCostImporting
+  const canSubmit = !isBusy && (hasAssetRows || hasTicketRows || hasCostRows)
 
   return (
     <div className="space-y-6">
@@ -289,6 +361,40 @@ export default function ImportData() {
         </Card.Body>
       </Card>
 
+      <Card variant="elevated">
+        <Card.Body>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="csv-costs-file">Fichier CSV (coûts ticket)</Label>
+              <Input
+                id="csv-costs-file"
+                type="file"
+                accept=".csv,text/csv"
+                onChange={onPickCostFile}
+                disabled={isBusy}
+              />
+              {costFile && (
+                <div className="text-xs text-gray-500">
+                  {costFile.name} ({Math.round(costFile.size / 1024)} KB)
+                </div>
+              )}
+              <div className="text-xs text-gray-500">
+                Exemple: <span className="font-mono">import/fichier3.csv</span>
+              </div>
+              {hasCostRows && (
+                <div className="text-sm text-gray-600">
+                  {costRows.length} lignes prêtes à importer
+                </div>
+              )}
+            </div>
+
+            {costError && <Alert variant="danger">{costError}</Alert>}
+
+            {(isCostImporting || costProgress.done > 0) && <ProgressBar progress={costProgress} />}
+          </div>
+        </Card.Body>
+      </Card>
+
         <div className="flex items-center gap-3">
           <Button type="submit" disabled={!canSubmit}>
             Valider et importer
@@ -320,6 +426,17 @@ export default function ImportData() {
       )}
 
       {ticketResults.length > 0 && <ResultsTable results={ticketResults} />}
+
+      {costStats.total > 0 && (
+        <div className="flex flex-wrap gap-2">
+          <Badge variant="success">Créés: {costStats.created}</Badge>
+          <Badge variant="warning">Ignorés: {costStats.skipped}</Badge>
+          <Badge variant="danger">Erreurs: {costStats.failed}</Badge>
+          <Badge variant="default">Total: {costStats.total}</Badge>
+        </div>
+      )}
+
+      {costResults.length > 0 && <ResultsTable results={costResults} />}
     </div>
   )
 }
