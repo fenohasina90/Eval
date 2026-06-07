@@ -10,6 +10,8 @@ import Exemple from '../pages/Exemple'
 import Ticket from '../pages/Ticket/Ticket'
 import Reset from '../pages/Reset/reset'
 import ImportData from '../pages/Import/ImportData'
+import FrontOfficeLayout from '../layouts/FrontOfficeLayout'
+import ElementList from '../pages/FrontOffice/ElementList'
 
 const router = createBrowserRouter([
   {
@@ -28,6 +30,13 @@ const router = createBrowserRouter([
       { path: 'import', element: <ImportData /> },
     ],
   },
+  {
+    path: '/front',
+    element: <FrontOfficeLayout />,
+    children: [
+      { index: true, element: <ElementList /> }
+    ]
+  }
 ])
 
 export default router
