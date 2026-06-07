@@ -186,7 +186,7 @@ async function fetchExistingTicketExternalIds() {
   const tickets = await fetchAll('/Assistance/Ticket', { range: '0-999999' })
   const existing = new Set()
   tickets.forEach((t) => {
-    const key = normalizeKey(t?.externalid)
+    const key = normalizeKey(t?.external_id ?? t?.externalid)
     if (key) existing.add(key)
   })
   return existing
@@ -319,7 +319,6 @@ export async function importTicketsFromRows(rows, { onProgress, onResults, asset
       report(idx + 1)
       continue
     }
-
     if (!status) {
       results.push({ index: idx + 1, itemType: 'Ticket', name: title, status: 'error', message: `Status invalide (${String(row?.Status ?? '').trim()}).` })
       report(idx + 1)
@@ -341,7 +340,7 @@ export async function importTicketsFromRows(rows, { onProgress, onResults, asset
         status,
         priority,
         date: dateTime,
-        externalid: refTicket || undefined,
+        external_id: refTicket || undefined,
       })
 
       const ticketId = await createTicket(payload)
