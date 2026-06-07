@@ -1,0 +1,63 @@
+
+<style>
+.tbl { width:100%; border-collapse:collapse; font-size:12px; margin-bottom:18px; }
+.tbl th { background:var(--color-background-secondary); color:var(--color-text-secondary); font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.07em; padding:8px 12px; text-align:left; border-bottom:1px solid var(--color-border-secondary); }
+.tbl td { padding:8px 12px; border-bottom:1px solid var(--color-border-tertiary); color:var(--color-text-primary); vertical-align:top; }
+.tbl tr:last-child td { border-bottom:none; }
+.mono { font-family:var(--font-mono); font-size:11px; color:var(--color-text-info); }
+.badge-r { background:var(--color-background-danger); border:1px solid var(--color-border-danger); color:var(--color-text-danger); border-radius:20px; padding:2px 8px; font-size:10px; font-weight:600; }
+.badge-g { background:var(--color-background-success); border:1px solid var(--color-border-success); color:var(--color-text-success); border-radius:20px; padding:2px 8px; font-size:10px; font-weight:600; }
+.badge-o { background:var(--color-background-warning); border:1px solid var(--color-border-warning); color:var(--color-text-warning); border-radius:20px; padding:2px 8px; font-size:10px; font-weight:600; }
+.badge-b { background:var(--color-background-info); border:1px solid var(--color-border-info); color:var(--color-text-info); border-radius:20px; padding:2px 8px; font-size:10px; font-weight:600; }
+.section-title { font-size:13px; font-weight:600; color:var(--color-text-primary); margin:20px 0 10px; display:flex; align-items:center; gap:8px; }
+.warn { background:var(--color-background-warning); border:1px solid var(--color-border-warning); border-radius:8px; padding:10px 14px; font-size:11px; color:var(--color-text-warning); margin-bottom:16px; }
+</style>
+
+<div style="padding:4px 0">
+
+<div class="warn">⚠️ Ces 4 tables doivent être remplies <strong>avant</strong> l'insertion des actifs (Computer, Monitor…). Chaque API retourne un <code>id</code> à réutiliser.</div>
+
+<div class="section-title">🔵 Statuts — <span class="mono">POST /State</span></div>
+<table class="tbl">
+  <tr><th>Champ</th><th>Type</th><th>Description</th><th>Valeurs du fichier1</th></tr>
+  <tr><td class="mono">name</td><td>string</td><td>Nom du statut</td><td>En production, Maintenance, En stock, En panne</td></tr>
+  <tr><td class="mono">entities_id</td><td>int</td><td>Entité (0 = racine)</td><td>0</td></tr>
+  <tr><td class="mono">is_visible_computer</td><td>bool</td><td>Visible pour Computer</td><td>1</td></tr>
+  <tr><td class="mono">is_visible_monitor</td><td>bool</td><td>Visible pour Monitor</td><td>1</td></tr>
+  <tr><td class="mono">comment</td><td>string</td><td>Commentaire</td><td>optionnel</td></tr>
+</table>
+
+<div class="section-title">🟢 Emplacements — <span class="mono">POST /Location</span></div>
+<table class="tbl">
+  <tr><th>Champ</th><th>Type</th><th>Description</th><th>Valeurs du fichier1</th></tr>
+  <tr><td class="mono">name</td><td>string</td><td>Nom de l'emplacement</td><td>Administration, Comptabilité, Laboratoire IA, Bibliothèque, Magasin Informatique, Salle 301</td></tr>
+  <tr><td class="mono">entities_id</td><td>int</td><td>Entité (0 = racine)</td><td>0</td></tr>
+  <tr><td class="mono">locations_id</td><td>int</td><td>Emplacement parent (0 = racine)</td><td>0</td></tr>
+  <tr><td class="mono">comment</td><td>string</td><td>Commentaire</td><td>optionnel</td></tr>
+</table>
+
+<div class="section-title">🟠 Fabricants — <span class="mono">POST /Manufacturer</span></div>
+<table class="tbl">
+  <tr><th>Champ</th><th>Type</th><th>Description</th><th>Valeurs du fichier1</th></tr>
+  <tr><td class="mono">name</td><td>string</td><td>Nom du fabricant</td><td>Dell, HP, Lenovo</td></tr>
+  <tr><td class="mono">comment</td><td>string</td><td>Commentaire</td><td>optionnel</td></tr>
+</table>
+
+<div class="section-title">🟣 Utilisateurs — <span class="mono">POST /User</span></div>
+<table class="tbl">
+  <tr><th>Champ</th><th>Type</th><th>Description</th><th>Valeurs du fichier1</th></tr>
+  <tr><td class="mono">name</td><td>string</td><td>Login utilisateur</td><td>rakoto.jean, rasoanaivo.marie…</td></tr>
+  <tr><td class="mono">realname</td><td>string</td><td>Nom de famille</td><td>Rakoto, Rasoanaivo…</td></tr>
+  <tr><td class="mono">firstname</td><td>string</td><td>Prénom</td><td>Jean, Marie…</td></tr>
+  <tr><td class="mono">entities_id</td><td>int</td><td>Entité</td><td>0</td></tr>
+  <tr><td class="mono">is_active</td><td>bool</td><td>Actif</td><td>1</td></tr>
+</table>
+
+<div class="section-title">📦 Bonus — Modèles d'actifs</div>
+<table class="tbl">
+  <tr><th>Table</th><th>API</th><th>Valeurs du fichier1</th></tr>
+  <tr><td>Modèles ordinateur</td><td class="mono">POST /ComputerModel</td><td>OptiPlex 7010, ProDesk 400 G9, ThinkCentre M70…</td></tr>
+  <tr><td>Modèles moniteur</td><td class="mono">POST /MonitorModel</td><td>AC1000</td></tr>
+</table>
+
+</div>
