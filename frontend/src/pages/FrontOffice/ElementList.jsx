@@ -24,8 +24,13 @@ const typeOptions = [
   { value: 'Rack', label: 'Baies' },
   { value: 'Enclosure', label: 'Châssis' },
   { value: 'Software', label: 'Logiciels' },
-  { value: 'Database', label: 'Bases de données' },
-  { value: 'DatacenterRoom', label: 'Salles Serveur' }
+  { value: 'PassiveDCEquipment', label: 'Équipements passifs' },
+  { value: 'PDU', label: 'PDU' },
+  { value: 'Cable', label: 'Câbles' },
+  { value: 'Unmanaged', label: 'Actif non géré' },
+  { value: 'Appliance', label: 'Applicatif' },
+  { value: 'SoftwareLicense', label: 'Licence' },
+  { value: 'Certificate', label: 'Certificat' }
 ]
 
 export default function ElementList() {
@@ -185,7 +190,8 @@ export default function ElementList() {
               elements.map(el => {
                 const modelId = el.computermodels_id || el.monitormodels_id || el.printermodels_id ||
                                 el.networkequipmentmodels_id || el.peripheralmodels_id || el.phonemodels_id ||
-                                el.rackmodels_id || el.enclosuremodels_id;
+                                el.rackmodels_id || el.enclosuremodels_id || el.passivedcequipmentmodels_id ||
+                                el.pdumodels_id || el.cablemodels_id || el.unmanagedmodels_id || el.appliancemodels_id;
                 return (
                   <Tr key={`${el.itemtype}-${el.id}`}>
                     <Td>{el.id}</Td>

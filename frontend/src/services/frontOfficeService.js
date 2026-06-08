@@ -22,7 +22,9 @@ export async function searchElements(criteria = {}, dropdownsMap = null) {
         const endpoints = [
             '/Computer', '/Monitor', '/Printer', 
             '/NetworkEquipment', '/Peripheral', '/Phone',
-            '/Rack', '/Enclosure', '/Software', '/Database', '/DatacenterRoom'
+            '/Rack', '/Enclosure', '/Software', 
+            '/PassiveDCEquipment', '/PDU', '/Cable',
+            '/Unmanaged', '/Appliance', '/SoftwareLicense', '/Certificate'
         ];
         // expand_dropdowns: true permet d'obtenir les noms (lieux, modèles, fabricants) au lieu des IDs
         const requests = endpoints.map(endpoint => 
@@ -52,7 +54,8 @@ export async function searchElements(criteria = {}, dropdownsMap = null) {
                 const man = dropdownsMap ? dropdownsMap.manufacturers[el.manufacturers_id] : el.manufacturers_id;
                 const modId = el.computermodels_id || el.monitormodels_id || el.printermodels_id ||
                               el.networkequipmentmodels_id || el.peripheralmodels_id || el.phonemodels_id ||
-                              el.rackmodels_id || el.enclosuremodels_id;
+                              el.rackmodels_id || el.enclosuremodels_id || el.passivedcequipmentmodels_id ||
+                              el.pdumodels_id || el.cablemodels_id || el.unmanagedmodels_id || el.appliancemodels_id;
                 const mod = dropdownsMap ? dropdownsMap.models[modId] : modId;
 
                 const searchFields = [
@@ -111,7 +114,9 @@ export async function getDropdowns() {
             locationsRes, manufacturersRes, 
             compModelsRes, monModelsRes, printModelsRes,
             netModelsRes, periphModelsRes, phoneModelsRes, 
-            rackModelsRes, encModelsRes
+            rackModelsRes, encModelsRes,
+            passiveModelsRes, pduModelsRes, cableModelsRes, 
+            unmanagedModelsRes, applianceModelsRes
         ] = await Promise.all([
             Legacy.get('/Location').catch(() => ({ data: [] })),
             Legacy.get('/Manufacturer').catch(() => ({ data: [] })),
@@ -122,7 +127,12 @@ export async function getDropdowns() {
             Legacy.get('/PeripheralModel').catch(() => ({ data: [] })),
             Legacy.get('/PhoneModel').catch(() => ({ data: [] })),
             Legacy.get('/RackModel').catch(() => ({ data: [] })),
-            Legacy.get('/EnclosureModel').catch(() => ({ data: [] }))
+            Legacy.get('/EnclosureModel').catch(() => ({ data: [] })),
+            Legacy.get('/PassiveDCEquipmentModel').catch(() => ({ data: [] })),
+            Legacy.get('/PDUModel').catch(() => ({ data: [] })),
+            Legacy.get('/CableModel').catch(() => ({ data: [] })),
+            Legacy.get('/UnmanagedModel').catch(() => ({ data: [] })),
+            Legacy.get('/ApplianceModel').catch(() => ({ data: [] }))
         ]);
 
         return {
@@ -136,7 +146,12 @@ export async function getDropdowns() {
                 ...(periphModelsRes.data || []),
                 ...(phoneModelsRes.data || []),
                 ...(rackModelsRes.data || []),
-                ...(encModelsRes.data || [])
+                ...(encModelsRes.data || []),
+                ...(passiveModelsRes.data || []),
+                ...(pduModelsRes.data || []),
+                ...(cableModelsRes.data || []),
+                ...(unmanagedModelsRes.data || []),
+                ...(applianceModelsRes.data || [])
             ]
         };
     } catch (error) {

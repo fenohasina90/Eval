@@ -19,3 +19,79 @@ est ce qu'on peut utiliser les API v1 et v2.3 en meme temps lors de l'import car
 - Logiciel
 
 - Salle Serveur
+
+
+
+
+[
+  {
+    "itemtype": "Computer",
+    "name": "Ordinateur",
+    "href": "/Assets/Computer"
+  },
+  {
+    "itemtype": "Monitor",
+    "name": "Moniteur",
+    "href": "/Assets/Monitor"
+  },
+  {
+    "itemtype": "NetworkEquipment",
+    "name": "Matériel réseau",
+    "href": "/Assets/NetworkEquipment"
+  },
+  {
+    "itemtype": "Peripheral",
+    "name": "Périphérique",
+    "href": "/Assets/Peripheral"
+  },
+  {
+    "itemtype": "Phone",
+    "name": "Téléphone",
+    "href": "/Assets/Phone"
+  },
+  {
+    "itemtype": "Printer",
+    "name": "Imprimante",
+    "href": "/Assets/Printer"
+  },
+  {
+    "itemtype": "SoftwareLicense",
+    "name": "Licence",
+    "href": "/Assets/SoftwareLicense"
+  },
+  {
+    "itemtype": "Certificate",
+    "name": "Certificat",
+    "href": "/Assets/Certificate"
+  },
+  {
+    "itemtype": "Unmanaged",
+    "name": "Actif non géré",
+    "href": "/Assets/Unmanaged"
+  },
+  {
+    "itemtype": "Appliance",
+    "name": "Applicatif",
+    "href": "/Assets/Appliance"
+  }
+]
+
+
+export const ASSET_TYPES = [
+  { key: 'Computer', label: 'Ordinateurs', path: '/Assets/Computer' },
+  { key: 'Monitor', label: 'Écrans', path: '/Assets/Monitor' },
+  { key: 'Printer', label: 'Imprimantes', path: '/Assets/Printer' },
+  { key: 'NetworkEquipment', label: 'Matériel réseau', path: '/Assets/NetworkEquipment' },
+  { key: 'Peripheral', label: 'Périphériques', path: '/Assets/Peripheral' },
+  { key: 'Phone', label: 'Téléphones', path: '/Assets/Phone' },
+  { key: 'Rack', label: 'Baies', path: '/Assets/Rack' },
+  { key: 'Enclosure', label: 'Châssis', path: '/Assets/Enclosure' },
+  { key: 'Software', label: 'Logiciels', path: '/Assets/Software' },
+  { key: 'Database', label: 'Bases de données', path: '/Assets/Unmanaged' },
+  { key: 'DatacenterRoom', label: 'Salles Serveur', path: '/Assets/Appliance' },
+  { key: 'PassiveDCEquipment', label: 'Équipements passifs', path: '/Assets/PassiveDCEquipment' },
+  { key: 'CartridgeItem', label: 'Cartouches', path: '/Assets/Certificate' },
+  { key: 'ConsumableItem', label: 'Consommables', path: '/Assets/SoftwareLicense' },
+  { key: 'PDU', label: 'PDU', path: '/Assets/PDU' },
+  { key: 'Cable', label: 'Câbles', path: '/Assets/Cable' },
+]

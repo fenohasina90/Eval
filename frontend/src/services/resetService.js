@@ -1,4 +1,4 @@
-import api, { get } from "./api";
+import api, { get, Legacy } from "./api";
 
 const allAPI = [
     { url: 'Computer', path: '/Assets/Computer', ids: null },
@@ -8,23 +8,43 @@ const allAPI = [
     { url: 'Phone', path: '/Assets/Phone', ids: null },
     { url: 'NetworkEquipment', path: '/Assets/NetworkEquipment', ids: null },
 
+    { url: 'Rack', path: '/Assets/Rack', ids: null },
+    { url: 'PDU', path: '/Assets/PDU', ids: null },
+    { url: 'Enclosure', path: '/Assets/Enclosure', ids: null },
+    { url: 'PassiveDCEquipment', path: '/Assets/PassiveDCEquipment', ids: null },
+    { url: 'Cable', path: '/Assets/Cable', ids: null },
+    { url: 'Unmanaged', path: '/Assets/Unmanaged', ids: null },
+    { url: 'Appliance', path: '/Assets/Appliance', ids: null },
+
     // Consommables & Accessoires
-    { url: 'ConsumableItem', path: null, ids: null },
-    { url: 'CartridgeItem', path: null, ids: null },
+    { url: 'ConsumableItem', path: '/Assets/ConsumableItem', ids: null },
+    { url: 'CartridgeItem', path: '/Assets/CartridgeItem', ids: null },
 
     // Organisation & Logistique
     { url: 'Location', path: '/Dropdowns/Location', ids: null },
     { url: 'Manufacturer', path: '/Dropdowns/Manufacturer', ids: null },
-    { url: 'Supplier', path: null, ids: null },
+    { url: 'Supplier', path: '/Dropdowns/Supplier', ids: null },
 
     // SAV & Assistance
     { url: 'Ticket', path: '/Assistance/Ticket', ids: null },
-    { url: 'Software', path: null, ids: null },
-    { url: 'SoftwareLicense', path: null, ids: null },
+    { url: 'Item_Ticket', path: '/Assistance/Item_Ticket', ids: null },
+
+    { url: 'Software', path: '/Assets/Software', ids: null },
+    { url: 'SoftwareLicense', path: '/Assets/SoftwareLicense', ids: null },
+    { url: 'Certificate', path: '/Assets/Certificate', ids: null },
 
     { url: 'State', path: '/Dropdowns/State', ids: null },
     { url: 'ComputerModel', path: '/Dropdowns/ComputerModel', ids: null },
     { url: 'MonitorModel', path: '/Dropdowns/MonitorModel', ids: null },
+    { url: 'PrinterModel', path: '/Dropdowns/PrinterModel', ids: null },
+    { url: 'PeripheralModel', path: '/Dropdowns/PeripheralModel', ids: null },
+    { url: 'PhoneModel', path: '/Dropdowns/PhoneModel', ids: null },
+    { url: 'NetworkEquipmentModel', path: '/Dropdowns/NetworkEquipmentModel', ids: null },
+    { url: 'RackModel', path: '/Dropdowns/RackModel', ids: null },
+    { url: 'PDUModel', path: '/Dropdowns/PDUModel', ids: null },
+    { url: 'EnclosureModel', path: '/Dropdowns/EnclosureModel', ids: null },
+    { url: 'PassiveDCEquipmentModel', path: '/Dropdowns/PassiveDCEquipmentModel', ids: null },
+
     { url: 'User', path: '/Administration/User', ids: null },
 ];
 
@@ -48,9 +68,40 @@ function normalizeName(value) {
         .replace(/[\u0300-\u036f]/g, '');
 }
 
+function getLegacyPath(path) {
+    if (!path) return '';
+    return path.replace(/^\/Assets/, '').replace(/^\/Dropdowns/, '').replace(/^\/Administration/, '').replace(/^\/Assistance/, '');
+}
+
+function shouldUseLegacyDirectly(path) {
+    // Liste très stricte des endpoints supportés par l'API custom
+    // Si ce n'est pas dedans, on tape directement l'API GLPI native pour éviter les 404 en console
+    const knownCustomPaths = ['/Assets/Computer', '/Assets/Monitor'];
+    return !knownCustomPaths.includes(path);
+}
+
 async function fetchAllItems(path, params = {}) {
-    const response = await get(path, { range: '0-999999', ...params });
-    return extractItems(response?.data);
+    if (shouldUseLegacyDirectly(path)) {
+        try {
+            const legacyPath = getLegacyPath(path);
+            const response = await Legacy.get(legacyPath, { range: '0-999999', ...params });
+            return extractItems(response?.data);
+        } catch (e) {
+            return [];
+        }
+    }
+
+    try {
+        const response = await get(path, { range: '0-999999', ...params });
+        return extractItems(response?.data);
+    } catch (err) {
+        if (err.response && err.response.status === 404) {
+            const legacyPath = getLegacyPath(path);
+            const response = await Legacy.get(legacyPath, { range: '0-999999', ...params });
+            return extractItems(response?.data);
+        }
+        throw err;
+    }
 }
 
 function shouldSkipDefault(entityUrl, item) {
@@ -108,17 +159,56 @@ function shouldSkipDefault(entityUrl, item) {
 
 async function deleteOne(entityUrl, path, id) {
     const url = `${path}/${id}`;
+    const legacyPath = getLegacyPath(path);
+    const legacyUrl = `${legacyPath}/${id}`;
 
+    if (shouldUseLegacyDirectly(path)) {
+        try {
+            await Legacy.delPurge(legacyUrl);
+            return;
+        } catch (legacyError) {
+            if (legacyError?.response?.status !== 401 && legacyError?.response?.status !== 403) {
+                throw legacyError;
+            }
+            await Legacy.del(legacyUrl);
+            return;
+        }
+    }
+
+    // Tentative de suppression avec l'API custom
     try {
         await api.delete(url, { params: { force: true } });
         return;
     } catch (error) {
+        if (error?.response?.status === 404) {
+            // Fallback vers l'API Legacy si l'endpoint n'existe pas
+            try {
+                await Legacy.delPurge(legacyUrl);
+                return;
+            } catch (legacyError) {
+                if (legacyError?.response?.status !== 401 && legacyError?.response?.status !== 403) {
+                    throw legacyError;
+                }
+                // Si force_purge échoue (permissions), on tente un simple delete
+                await Legacy.del(legacyUrl);
+                return;
+            }
+        }
         if (error?.response?.status !== 401 && error?.response?.status !== 403) {
             throw error;
         }
     }
 
-    await api.delete(url);
+    // Fallback normal delete (si API custom a refusé force delete)
+    try {
+        await api.delete(url);
+    } catch (error) {
+        if (error?.response?.status === 404) {
+            await Legacy.del(legacyUrl);
+        } else {
+            throw error;
+        }
+    }
 }
 
 async function deleteUserFallback(id) {
@@ -131,10 +221,8 @@ async function deleteUserFallback(id) {
 }
 
 async function getIdsPour(entityName) {
-    // 1. On cherche la bonne ligne dans ton tableau
     const targetEntity = allAPI.find(api => api.url === entityName);
 
-    // Sécurité : si l'entité n'est pas dans le tableau
     if (!targetEntity) {
         console.error("Entité non reconnue");
         return [];
@@ -146,29 +234,33 @@ async function getIdsPour(entityName) {
             return [];
         }
 
-        const activeItems = await fetchAllItems(targetEntity.path);
-        const ids = activeItems
-            .filter((item) => !shouldSkipDefault(targetEntity.url, item))
-            .map((item) => item?.id)
-            .filter(Boolean);
+        // Paramètres de base
+        const paramsList = [{}];
+        
+        // Pour les tickets, on veut aussi ceux qui sont clos ou résolus
+        if (entityName === 'Ticket') {
+            paramsList[0] = { status: 'all' };
+        }
 
-        const merged = new Set(ids);
+        // On fait une 2ème passe pour la corbeille
+        paramsList.push({ ...paramsList[0], is_deleted: 1 });
 
-        if (targetEntity.url === 'Computer' || targetEntity.url === 'Monitor') {
+        const allIds = new Set();
+
+        for (const params of paramsList) {
             try {
-                const deletedItems = await fetchAllItems(targetEntity.path, { filter: 'is_deleted==true' });
-                deletedItems
-                    .filter((item) => !shouldSkipDefault(targetEntity.url, item))
-                    .filter((item) => isDeleted(item))
-                    .map((item) => item?.id)
-                    .filter(Boolean)
-                    .forEach((id) => merged.add(id));
-            } catch (error) {
-                void error;
+                const items = await fetchAllItems(targetEntity.path, params);
+                items.forEach(item => {
+                    if (!shouldSkipDefault(targetEntity.url, item)) {
+                        allIds.add(item.id);
+                    }
+                });
+            } catch (e) {
+                // Ignore silencieusement si le backend refuse is_deleted=1 (ex: pour les dropdowns)
             }
         }
 
-        targetEntity.ids = Array.from(merged);
+        targetEntity.ids = Array.from(allIds);
         return targetEntity.ids;
     } catch (error) {
         console.error("Erreur de fetch", error);

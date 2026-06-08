@@ -1,4 +1,4 @@
-import { get } from './api'
+import { get, Legacy } from './api'
 
 function extractItems(data) {
   if (Array.isArray(data)) return data
@@ -21,17 +21,37 @@ function normalizeTicketType(value) {
 }
 
 async function fetchAll(path) {
-  const response = await get(path, { range: '0-999999' })
-  return extractItems(response?.data)
+  try {
+    const response = await get(path, { range: '0-999999' })
+    return extractItems(response?.data)
+  } catch (err) {
+    if (err.response && err.response.status === 404) {
+      const legacyPath = path.replace(/^\/Assets/, '').replace(/^\/Assistance/, '');
+      const response = await Legacy.get(legacyPath, { range: '0-999999' })
+      return extractItems(response?.data)
+    }
+    console.error(`Error fetching ${path}`, err);
+    return []; // Retourne un tableau vide au lieu de planter tout le dashboard
+  }
 }
 
 export const ASSET_TYPES = [
   { key: 'Computer', label: 'Ordinateurs', path: '/Assets/Computer' },
   { key: 'Monitor', label: 'Écrans', path: '/Assets/Monitor' },
-  { key: 'NetworkEquipment', label: 'Équipements réseau', path: '/Assets/NetworkEquipment' },
+  { key: 'Printer', label: 'Imprimantes', path: '/Assets/Printer' },
+  { key: 'NetworkEquipment', label: 'Matériel réseau', path: '/Assets/NetworkEquipment' },
   { key: 'Peripheral', label: 'Périphériques', path: '/Assets/Peripheral' },
   { key: 'Phone', label: 'Téléphones', path: '/Assets/Phone' },
-  { key: 'Printer', label: 'Imprimantes', path: '/Assets/Printer' },
+  { key: 'Rack', label: 'Baies', path: '/Assets/Rack' },
+  { key: 'Enclosure', label: 'Châssis', path: '/Assets/Enclosure' },
+  { key: 'Software', label: 'Logiciels', path: '/Assets/Software' },
+  { key: 'PassiveDCEquipment', label: 'Équipements passifs', path: '/Assets/PassiveDCEquipment' },
+  { key: 'PDU', label: 'PDU', path: '/Assets/PDU' },
+  { key: 'Cable', label: 'Câbles', path: '/Assets/Cable' },
+  { key: 'Unmanaged', label: 'Actif non géré', path: '/Assets/Unmanaged' },
+  { key: 'Appliance', label: 'Applicatif', path: '/Assets/Appliance' },
+  { key: 'SoftwareLicense', label: 'Licence', path: '/Assets/SoftwareLicense' },
+  { key: 'Certificate', label: 'Certificat', path: '/Assets/Certificate' }
 ]
 
 export const TICKET_TYPES = [
