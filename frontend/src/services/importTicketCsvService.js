@@ -1,4 +1,4 @@
-import { get, post, Legacy } from './api'
+import { get, post, put, Legacy } from './api'
 
 export const REQUIRED_TICKET_COLUMNS = [
   'Ref_Ticket',
@@ -46,8 +46,18 @@ function extractItems(data) {
 }
 
 async function fetchAll(path, { range = '0-9999', ...params } = {}) {
-  const response = await get(path, { range, ...params })
-  return extractItems(response?.data)
+  try {
+    const response = await get(path, { range, ...params })
+    return extractItems(response?.data)
+  } catch (err) {
+    if (err.response && err.response.status === 404) {
+      // Fallback to legacy API if modern API route doesn't exist
+      const legacyPath = '/' + path.split('/').pop()
+      const response = await Legacy.get(legacyPath, { range, ...params }).catch(() => null)
+      return extractItems(response?.data)
+    }
+    throw err
+  }
 }
 
 function coerceId(value) {
@@ -186,7 +196,7 @@ async function fetchExistingTicketExternalIds() {
   const tickets = await fetchAll('/Assistance/Ticket', { range: '0-999999' })
   const existing = new Set()
   tickets.forEach((t) => {
-    const key = normalizeKey(t?.external_id ?? t?.externalid)
+    const key = normalizeKey(t?.externalid)
     if (key) existing.add(key)
   })
   return existing
@@ -201,8 +211,14 @@ function extractErrorMessage(err) {
 }
 
 async function createTicket(payload) {
-  const response = await post('/Assistance/Ticket', payload)
+  // Use Legacy API for creation to ensure compatibility with standard GLPI REST paths
+  const response = await Legacy.post('/Ticket', payload)
   return extractIdFromResponse(response?.data)
+}
+
+async function updateTicket(id, payload) {
+  // Use Legacy API for updates to ensure compatibility with standard GLPI REST paths
+  await Legacy.put(`/Ticket/${id}`, { id, ...payload })
 }
 
 async function linkTicketToItem({ tickets_id, itemtype, items_id }) {
@@ -260,7 +276,13 @@ async function resolveAsset({ itemKey, assetsIndex, assetRowsIndex, typeCache })
   if (preferredType) {
     let cached = typeCache.get(preferredType) ?? null
     if (!cached) {
-      const list = await fetchAll(`/Assets/${preferredType}`, { range: '0-999999' })
+      let endpoint = `/Assets/${preferredType}`
+      if (preferredType === 'ConsumableItem' || preferredType === 'CartridgeItem') {
+        endpoint = `/Management/${preferredType}`
+      } else if (preferredType === 'PassiveDCEquipmentModel' || preferredType === 'PDUModel' || preferredType === 'RackModel') {
+        endpoint = `/Dropdowns/${preferredType}`
+      }
+      const list = await fetchAll(endpoint, { range: '0-999999' }).catch(() => [])
       cached = { idIndex: buildTypeAssetIdIndex(list) }
       typeCache.set(preferredType, cached)
     }
@@ -332,15 +354,16 @@ export async function importTicketsFromRows(rows, { onProgress, onResults, asset
     }
 
     try {
+      const isClosed = status === 6
       const payload = compactObject({
         entities_id: 0,
         name: title,
         content: description,
         type,
-        status,
+        status: isClosed ? 1 : status,
         priority,
         date: dateTime,
-        external_id: refTicket || undefined,
+        externalid: refTicket || undefined,
       })
 
       const ticketId = await createTicket(payload)
@@ -372,8 +395,21 @@ export async function importTicketsFromRows(rows, { onProgress, onResults, asset
       }
 
       const parts = []
-      if (ticketId) parts.push(`Créé (id=${ticketId}).`)
-      else parts.push('Créé.')
+      if (ticketId) {
+        if (isClosed) {
+          try {
+            await updateTicket(ticketId, { status: 6 })
+            parts.push(`Créé et clôturé (id=${ticketId}).`)
+          } catch (err) {
+            parts.push(`Créé (id=${ticketId}) mais erreur clôture: ${extractErrorMessage(err)}.`)
+          }
+        } else {
+          parts.push(`Créé (id=${ticketId}).`)
+        }
+      } else {
+        parts.push('Créé.')
+      }
+
       if (items.length > 0) parts.push(`Liens: ${linkedItems.length}/${items.length}.`)
       if (missingItems.length > 0) parts.push(`Introuvables: ${missingItems.join(', ')}.`)
       if (linkErrors.length > 0) parts.push(`Erreurs liaison: ${linkErrors.join(' | ')}.`)

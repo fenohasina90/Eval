@@ -29,6 +29,10 @@ const allAPI = [
     { url: 'Ticket', path: '/Assistance/Ticket', ids: null },
     { url: 'Item_Ticket', path: '/Assistance/Item_Ticket', ids: null },
 
+    // Documents & Fichiers
+    { url: 'Document', path: '/Document', ids: null },
+    { url: 'Document_Item', path: '/Document_Item', ids: null },
+
     { url: 'Software', path: '/Assets/Software', ids: null },
     { url: 'SoftwareLicense', path: '/Assets/SoftwareLicense', ids: null },
     { url: 'Certificate', path: '/Assets/Certificate', ids: null },

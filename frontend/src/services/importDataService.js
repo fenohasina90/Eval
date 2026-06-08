@@ -467,11 +467,10 @@ export async function importAssetsFromRows(
           // Flatten payload for Legacy API (e.g. states_id instead of status: {id})
           const legacyPayload = {
             name,
-            states_id: statusId || 0,
             locations_id: locationId || 0,
             manufacturers_id: manufacturerId || 0,
-            otherserial: inventoryNumber,
-            users_id: users_id || 0,
+            ...(!['CartridgeItem', 'ConsumableItem'].includes(itemType) ? {states_id: statusId || 0, otherserial: inventoryNumber, users_id: users_id || 0} : {}),
+            ...(inventoryNumber && ['CartridgeItem', 'ConsumableItem'].includes(itemType) ? {ref: inventoryNumber} : {}),
           };
           if (modelId) {
              const modelField = `${itemType.toLowerCase()}models_id`;
@@ -485,11 +484,10 @@ export async function importAssetsFromRows(
           // Flatten payload for Legacy API (e.g. states_id instead of status: {id})
           const legacyPayload = {
             name,
-            states_id: statusId || 0,
             locations_id: locationId || 0,
             manufacturers_id: manufacturerId || 0,
-            otherserial: inventoryNumber,
-            users_id: users_id || 0,
+            ...(!['CartridgeItem', 'ConsumableItem'].includes(itemType) ? {states_id: statusId || 0, otherserial: inventoryNumber, users_id: users_id || 0} : {}),
+            ...(inventoryNumber && ['CartridgeItem', 'ConsumableItem'].includes(itemType) ? {ref: inventoryNumber} : {}),
           };
           if (modelId) {
              const modelField = `${itemType.toLowerCase()}models_id`;

@@ -1,4 +1,4 @@
-import { get, post, Legacy } from './api'
+import { get, post } from './api'
 
 export const REQUIRED_TICKET_COST_COLUMNS = ['Num_Ticket', 'Duration_second', 'Time_Cost', 'Fixed_Cost']
 
@@ -35,20 +35,16 @@ function extractIdFromResponse(data) {
   return null
 }
 
+async function fetchAllTickets() {
+  const response = await get('/Assistance/Ticket', { range: '0-999999' })
+  return extractItems(response?.data)
+}
 
 async function buildTicketIdByExternalId() {
-  // Utiliser la Legacy API (v1) pour être cohérent avec importTicketCsvService
-  // qui insère via Legacy avec le champ "externalid"
-  // La v1 retourne bien "externalid" (sans underscore)
-  const response = await Legacy.get('/Ticket', { range: '0-999999' })
-  const tickets = extractItems(response?.data)
+  const tickets = await fetchAllTickets()
   const map = new Map()
   tickets.forEach((t) => {
-    // v1 (Legacy) retourne "externalid" sans underscore
-    // v2 (api.php) retourne "external_id" avec underscore
-    // On supporte les deux pour robustesse
-    const extRaw = t?.externalid ?? t?.external_id ?? null
-    const ext = normalizeKey(extRaw)
+    const ext = normalizeKey(t?.external_id ?? t?.externalid)
     const id = t?.id
     if (!ext || !id) return
     if (map.has(ext)) return
@@ -79,9 +75,7 @@ function extractErrorMessage(err) {
 }
 
 async function createTicketCost(ticketId, payload) {
-  // Utiliser Legacy API (v1) — POST /TicketCost
-  // La v2 /Assistance/Ticket/{id}/Cost n'est pas encore stable pour l'écriture
-  const response = await Legacy.post('/TicketCost', payload)
+  const response = await post(`/Assistance/Ticket/${ticketId}/Cost`, payload)
   return extractIdFromResponse(response?.data)
 }
 
@@ -114,7 +108,7 @@ export async function importTicketCostsFromRows(rows, { onProgress, onResults } 
         itemType: 'TicketCost',
         name: externalId,
         status: 'error',
-        message: `Ticket introuvable (externalid=${externalId}). Le ticket a-t-il été importé depuis fichier2 ?`,
+        message: `Ticket introuvable (external_id=${externalId}).`,
       })
       report(idx + 1)
       continue
@@ -127,8 +121,7 @@ export async function importTicketCostsFromRows(rows, { onProgress, onResults } 
     try {
       const payload = compactObject({
         name: `Cout Ticket ${ticketId}`,
-        tickets_id: ticketId,     // ← clé étrangère obligatoire en Legacy
-        actiontime: duration,     // ← vrai champ glpi_ticketcosts (pas "duration")
+        duration,
         cost_time: costTime,
         cost_fixed: costFixed,
       })
@@ -156,3 +149,4 @@ export async function importTicketCostsFromRows(rows, { onProgress, onResults } 
 
   return results
 }
+

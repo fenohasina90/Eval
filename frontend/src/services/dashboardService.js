@@ -48,10 +48,8 @@ export const ASSET_TYPES = [
   { key: 'PassiveDCEquipment', label: 'Équipements passifs', path: '/Assets/PassiveDCEquipment' },
   { key: 'PDU', label: 'PDU', path: '/Assets/PDU' },
   { key: 'Cable', label: 'Câbles', path: '/Assets/Cable' },
-  { key: 'Unmanaged', label: 'Actif non géré', path: '/Assets/Unmanaged' },
-  { key: 'Appliance', label: 'Applicatif', path: '/Assets/Appliance' },
-  { key: 'SoftwareLicense', label: 'Licence', path: '/Assets/SoftwareLicense' },
-  { key: 'Certificate', label: 'Certificat', path: '/Assets/Certificate' }
+  { key: 'CartridgeItem', label: 'Cartouches', path: '/Assets/CartridgeItem' },
+  { key: 'ConsumableItem', label: 'Consommables', path: '/Assets/ConsumableItem' },
 ]
 
 export const TICKET_TYPES = [
