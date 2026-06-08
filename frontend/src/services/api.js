@@ -200,8 +200,8 @@ export function clearSession() {
 // ── API Legacy (apirest.php) ────────────────────────────────────────
 // ═════════════════════════════════════════════════════════════════════
 
-const LEGACY_BASE_URL = import.meta.env.VITE_LEGACY_BASE_URL || "/apirest";
-const LEGACY_APP_TOKEN = import.meta.env.VITE_LEGACY_APP_TOKEN || import.meta.env.VITE_GLPI_APP_TOKEN || "";
+export const LEGACY_BASE_URL = import.meta.env.VITE_LEGACY_BASE_URL || "/apirest";
+export const LEGACY_APP_TOKEN = import.meta.env.VITE_LEGACY_APP_TOKEN || import.meta.env.VITE_GLPI_APP_TOKEN || "";
 const LEGACY_USER_TOKEN = import.meta.env.VITE_LEGACY_USER_TOKEN || "";
 const LEGACY_CREDENTIALS = {
   login: import.meta.env.VITE_LEGACY_LOGIN || "glpi",
@@ -302,7 +302,7 @@ async function initSession() {
 /**
  * Retourne le session token courant ou en initialise un nouveau.
  */
-async function getSessionToken() {
+export async function getSessionToken() {
   if (!sessionToken) {
     await initSession();
   }

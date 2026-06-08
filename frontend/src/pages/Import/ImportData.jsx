@@ -3,6 +3,7 @@ import { Alert, Badge, Button, Card, Input, Label, P, Table, Tbody, Td, Th, Thea
 import { importAssetsFromRows, parseCsvText, REQUIRED_COLUMNS } from '../../services/importDataService'
 import { importTicketsFromRows, REQUIRED_TICKET_COLUMNS } from '../../services/importTicketCsvService'
 import { importTicketCostsFromRows, REQUIRED_TICKET_COST_COLUMNS } from '../../services/importTicketCostsCsvService'
+import { importZipImages } from '../../services/importZipImagesService'
 
 function computeStats(results) {
   const total = results.length
@@ -37,25 +38,28 @@ function ResultsTable({ results }) {
         <Tr>
           <Th>#</Th>
           <Th>ItemType</Th>
-          <Th>Nom</Th>
+          <Th>Nom / Fichier</Th>
           <Th>Résultat</Th>
           <Th>Détail</Th>
         </Tr>
       </Thead>
       <Tbody>
-        {results.map((r) => (
-          <Tr key={`${r.index}-${r.name}-${r.itemType}`}>
-            <Td>{r.index}</Td>
-            <Td>{r.itemType}</Td>
-            <Td>{r.name}</Td>
-            <Td>
-              {r.status === 'created' && <span className="text-green-700">Créé</span>}
-              {r.status === 'skipped' && <span className="text-yellow-700">Ignoré</span>}
-              {r.status === 'error' && <span className="text-red-700">Erreur</span>}
-            </Td>
-            <Td className="font-mono text-xs">{r.message}</Td>
-          </Tr>
-        ))}
+        {results.map((r, idx) => {
+          const key = r.index !== undefined ? `${r.index}-${r.name}-${r.itemType}` : `zip-${idx}-${r.filename}`;
+          return (
+            <Tr key={key}>
+              <Td>{r.index !== undefined ? r.index : idx + 1}</Td>
+              <Td>{r.itemType || 'Image (ZIP)'}</Td>
+              <Td>{r.name || r.filename}</Td>
+              <Td>
+                {r.status === 'created' && <span className="text-green-700">Créé/Lié</span>}
+                {r.status === 'skipped' && <span className="text-yellow-700">Ignoré</span>}
+                {r.status === 'error' && <span className="text-red-700">Erreur</span>}
+              </Td>
+              <Td className="font-mono text-xs">{r.message}</Td>
+            </Tr>
+          )
+        })}
       </Tbody>
     </Table>
   )
@@ -86,9 +90,16 @@ export default function ImportData() {
   const [costProgress, setCostProgress] = useState({ done: 0, total: 0 })
   const [costResults, setCostResults] = useState([])
 
+  const [zipFile, setZipFile] = useState(null)
+  const [zipError, setZipError] = useState('')
+  const [isZipImporting, setIsZipImporting] = useState(false)
+  const [zipProgress, setZipProgress] = useState({ done: 0, total: 0 })
+  const [zipResults, setZipResults] = useState([])
+
   const hasAssetRows = assetRows.length > 0
   const hasTicketRows = ticketRows.length > 0
   const hasCostRows = costRows.length > 0
+  const hasZipFile = zipFile !== null
 
   const requiredAssetColumns = REQUIRED_COLUMNS
   const requiredTicketColumns = REQUIRED_TICKET_COLUMNS
@@ -164,6 +175,10 @@ export default function ImportData() {
 
     if (hasCostRows) {
       await onImportCosts(e)
+    }
+
+    if (hasZipFile) {
+      await onImportZip(e)
     }
   }
 
@@ -280,11 +295,43 @@ export default function ImportData() {
     }
   }
 
+  function onPickZipFile(e) {
+    const selected = e.target.files?.[0] ?? null
+    setZipFile(selected)
+    setZipResults([])
+    setZipProgress({ done: 0, total: 0 })
+    setZipError('')
+  }
+
+  async function onImportZip(e) {
+    e.preventDefault()
+    if (!hasZipFile || isZipImporting) return
+
+    setIsZipImporting(true)
+    setZipError('')
+    setZipResults([])
+    setZipProgress({ done: 0, total: 0 }) // Le total sera calculé après lecture du ZIP
+
+    try {
+      const out = await importZipImages(zipFile, {
+        onProgress: ({ done, total }) => setZipProgress({ done, total }),
+        onResults: (partial) => setZipResults(partial),
+      })
+      setZipResults(out)
+    } catch (err) {
+      setZipError(err?.message || "Erreur lors de l'import du ZIP.")
+    } finally {
+      setIsZipImporting(false)
+    }
+  }
+
   const assetStats = useMemo(() => computeStats(assetResults), [assetResults])
   const ticketStats = useMemo(() => computeStats(ticketResults), [ticketResults])
   const costStats = useMemo(() => computeStats(costResults), [costResults])
-  const isBusy = isAssetParsing || isTicketParsing || isCostParsing || isAssetImporting || isTicketImporting || isCostImporting
-  const canSubmit = !isBusy && (hasAssetRows || hasTicketRows || hasCostRows)
+  const zipStats = useMemo(() => computeStats(zipResults), [zipResults])
+  
+  const isBusy = isAssetParsing || isTicketParsing || isCostParsing || isAssetImporting || isTicketImporting || isCostImporting || isZipImporting
+  const canSubmit = !isBusy && (hasAssetRows || hasTicketRows || hasCostRows || hasZipFile)
 
   return (
     <div className="space-y-6">
@@ -395,6 +442,40 @@ export default function ImportData() {
         </Card.Body>
       </Card>
 
+      <Card variant="elevated">
+        <Card.Body>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="zip-images-file">Fichier ZIP (images d'actifs)</Label>
+              <Input
+                id="zip-images-file"
+                type="file"
+                accept=".zip,application/zip"
+                onChange={onPickZipFile}
+                disabled={isBusy}
+              />
+              {zipFile && (
+                <div className="text-xs text-gray-500">
+                  {zipFile.name} ({Math.round(zipFile.size / 1024)} KB)
+                </div>
+              )}
+              <div className="text-xs text-gray-500">
+                Les images doivent être nommées comme les actifs (ex: <span className="font-mono">PC-001.png</span>).
+              </div>
+              {hasZipFile && (
+                <div className="text-sm text-gray-600">
+                  ZIP prêt à être analysé
+                </div>
+              )}
+            </div>
+
+            {zipError && <Alert variant="danger">{zipError}</Alert>}
+
+            {(isZipImporting || zipProgress.total > 0) && <ProgressBar progress={zipProgress} />}
+          </div>
+        </Card.Body>
+      </Card>
+
         <div className="flex items-center gap-3">
           <Button type="submit" disabled={!canSubmit}>
             Valider et importer
@@ -437,6 +518,17 @@ export default function ImportData() {
       )}
 
       {costResults.length > 0 && <ResultsTable results={costResults} />}
+
+      {zipStats.total > 0 && (
+        <div className="flex flex-wrap gap-2">
+          <Badge variant="success">Liées: {zipStats.created}</Badge>
+          <Badge variant="warning">Ignorées: {zipStats.skipped}</Badge>
+          <Badge variant="danger">Erreurs: {zipStats.failed}</Badge>
+          <Badge variant="default">Total: {zipStats.total}</Badge>
+        </div>
+      )}
+
+      {zipResults.length > 0 && <ResultsTable results={zipResults} />}
     </div>
   )
 }
