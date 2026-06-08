@@ -81,23 +81,29 @@ export async function importZipImages(zipFile, { onProgress = () => {}, onResult
             // ÉTAPE 2 — Recherche de l'actif dans GLPI
             const searchResponse = await Legacy.get(`/search/${itemtype}`, {
                 'criteria[0][field]': 1,
-                'criteria[0][searchtype]': 'equals',
-                'criteria[0][value]': baseName,
+                'criteria[0][searchtype]': 'contains',
+                'criteria[0][value]': baseName.trim(),
                 'forcedisplay[0]': 2,
-                range: '0-1'
+                range: '0-50'
             });
 
             const body = searchResponse?.data;
             const foundItems = Array.isArray(body) ? body : (body?.data || []);
 
-            if (foundItems.length === 0 || !foundItems[0] || !foundItems[0]['2']) {
+            // Match case-insensitively and ignore trailing spaces
+            const matchedItem = foundItems.find(item => {
+                const itemName = String(item['1'] || '').trim().toLowerCase();
+                return itemName === baseName.trim().toLowerCase();
+            });
+
+            if (!matchedItem || !matchedItem['2']) {
                 results.push({ filename, status: 'error', message: `Actif introuvable dans GLPI (${baseName})` });
                 done++;
                 onProgress({ done, total });
                 continue;
             }
 
-            const items_id = foundItems[0]['2'];
+            const items_id = matchedItem['2'];
 
             // ÉTAPE 3 — Upload de l'image comme Document GLPI
             const blob = await file.async("blob");
@@ -133,12 +139,10 @@ export async function importZipImages(zipFile, { onProgress = () => {}, onResult
 
             // ÉTAPE 4 — Liaison Document → Actif
             await Legacy.post('/Document_Item', {
-                input: {
-                    documents_id: documents_id,
-                    itemtype: itemtype,
-                    items_id: items_id,
-                    entities_id: 0
-                }
+                documents_id: documents_id,
+                itemtype: itemtype,
+                items_id: items_id,
+                entities_id: 0
             });
 
             results.push({ filename, status: 'created', message: "Image uploadée et liée avec succès" });
