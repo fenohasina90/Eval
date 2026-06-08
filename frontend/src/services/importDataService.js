@@ -148,14 +148,56 @@ export function parseCsvText(text) {
   return rows
 }
 
-async function fetchAll(itemType) {
-  const response = await get(itemType, { range: '0-9999' })
-  const data = response?.data
-  if (Array.isArray(data)) return data
-  if (Array.isArray(data?.data)) return data.data
-  if (Array.isArray(data?.items)) return data.items
-  if (Array.isArray(data?.results)) return data.results
-  return []
+function getLegacyPath(path) {
+  return path.replace(/^\/Assets/, '').replace(/^\/Dropdowns/, '').replace(/^\/Administration/, '')
+}
+
+const TYPES_WITHOUT_MODELS = [
+  'Software', 'SoftwareLicense', 'Certificate', 
+  'CartridgeItem', 'ConsumableItem', 'Cable', 
+  'Unmanaged', 'Appliance', 'Ticket', 'Database', 'DatacenterRoom'
+];
+
+const CUSTOM_API_SUPPORTED = ['Computer', 'Monitor'];
+
+async function fetchAll(path) {
+  // Empêche les requêtes 400 Bad Request pour les modèles inexistants sur GLPI
+  if (TYPES_WITHOUT_MODELS.some(type => path.includes(`${type}Model`))) {
+    return [];
+  }
+
+  // Empêche les requêtes 404 sur l'API custom pour les types non supportés
+  const isAssetEndpoint = path.startsWith('/Assets/');
+  const isSupportedAsset = CUSTOM_API_SUPPORTED.some(type => path === `/Assets/${type}`);
+  
+  if (isAssetEndpoint && !isSupportedAsset) {
+     try {
+       const legacyPath = getLegacyPath(path);
+       const response = await Legacy.get(legacyPath, { range: '0-9999' });
+       const data = response?.data;
+       return Array.isArray(data) ? data : [];
+     } catch (e) {
+       return [];
+     }
+  }
+  try {
+    const response = await get(path, { range: '0-9999' })
+    const data = response?.data
+    if (Array.isArray(data)) return data
+    if (Array.isArray(data?.data)) return data.data
+    if (Array.isArray(data?.items)) return data.items
+    if (Array.isArray(data?.results)) return data.results
+    return []
+  } catch (err) {
+    if (err.response && err.response.status === 404) {
+      const legacyPath = getLegacyPath(path)
+      const response = await Legacy.get(legacyPath, { range: '0-9999' })
+      const data = response?.data
+      if (Array.isArray(data)) return data
+      return []
+    }
+    throw err
+  }
 }
 
 async function buildNameIdMap({ path, nameKey = 'name' }) {
@@ -191,8 +233,24 @@ async function getOrCreateByName({ path, name, cache, createPayload }) {
 
   try {
     const payload = createPayload(name)
-    const response = await post(path, payload)
-    const id = extractIdFromResponse(response?.data)
+    let response;
+    
+    const isModel = path.includes('Model');
+    const isDropdown = path.startsWith('/Dropdowns/');
+    
+    // Si c'est un Dropdown qui n'est pas un modèle, on tente d'abord l'API custom
+    // Si c'est un modèle qui n'existe pas dans GLPI (bloqué en amont), ça n'arrive pas ici
+    try {
+      response = await post(path, payload)
+    } catch (err) {
+      if (err.response && err.response.status === 404) {
+        const legacyPath = getLegacyPath(path)
+        response = await Legacy.post(legacyPath, payload)
+      } else {
+        throw err
+      }
+    }
+    const id = extractIdFromResponse(response?.data) || extractIdFromResponse(response)
     if (id) {
       cache.set(key, id)
       return id
@@ -250,7 +308,10 @@ export async function importAssetsFromRows(
     onResults?.([...results])
   }
 
-  const [stateInfo, locations, manufacturers, computerModels, monitorModels, users, computers, monitors] = await Promise.all([
+  const uniqueItemTypes = [...new Set(rows.map(r => String(r?.Item_Type ?? '').trim()).filter(Boolean))];
+  if (uniqueItemTypes.length === 0) uniqueItemTypes.push('Computer');
+
+  const [stateInfo, locations, manufacturers, users] = await Promise.all([
     (async () => {
       const { map, items } = await buildNameIdMapWithItems({ path: '/Dropdowns/State' })
       const first = Array.isArray(items) ? items[0] : null
@@ -259,18 +320,30 @@ export async function importAssetsFromRows(
     })(),
     buildNameIdMap({ path: '/Dropdowns/Location' }),
     buildNameIdMap({ path: '/Dropdowns/Manufacturer' }),
-    buildNameIdMap({ path: '/Dropdowns/ComputerModel' }),
-    buildNameIdMap({ path: '/Dropdowns/MonitorModel' }),
-    buildNameIdMap({ path: '/Administration/User', nameKey: 'username' }),
-    fetchAll('/Assets/Computer'),
-    fetchAll('/Assets/Monitor'),
+    buildNameIdMap({ path: '/Administration/User', nameKey: 'username' })
   ])
+
+  // Charger dynamiquement les actifs existants et les modèles pour chaque type
+  const existingMaps = {};
+  const modelCaches = {};
+  await Promise.all(uniqueItemTypes.map(async (type) => {
+    try {
+      const items = await fetchAll(`/Assets/${type}`);
+      existingMaps[type] = computeExistingKeys(items);
+    } catch (e) {
+      existingMaps[type] = { byName: new Set(), bySerial: new Set() };
+    }
+    
+    try {
+      modelCaches[type] = await buildNameIdMap({ path: `/Dropdowns/${type}Model` });
+    } catch (e) {
+      modelCaches[type] = new Map(); // Si pas de modèle pour ce type (ex: Software)
+    }
+  }));
 
   const states = stateInfo.map
   const stateVisibilityKeys = stateInfo.visibilityKeys
 
-  const existingComputer = computeExistingKeys(computers)
-  const existingMonitor = computeExistingKeys(monitors)
   const ensuredStateVisibilities = new Set()
   const ensuredLegacyStateVisibilities = new Set()
   const desiredStateVisibilities = stateVisibilityKeys.length
@@ -281,7 +354,7 @@ export async function importAssetsFromRows(
     const row = rows[idx]
     const name = String(row?.Name ?? '').trim()
     const itemTypeRaw = String(row?.Item_Type ?? '').trim()
-    const itemType = itemTypeRaw.toLowerCase() === 'monitor' ? 'Monitor' : 'Computer'
+    const itemType = itemTypeRaw || 'Computer'
     const statusName = String(row?.Status ?? '').trim()
     const locationName = String(row?.Location ?? '').trim()
     const manufacturerName = String(row?.Manufacturer ?? '').trim()
@@ -297,7 +370,7 @@ export async function importAssetsFromRows(
 
     const nameKey = normalizeKey(name)
     const serialKey = normalizeKey(inventoryNumber)
-    const existing = itemType === 'Monitor' ? existingMonitor : existingComputer
+    const existing = existingMaps[itemType] || { byName: new Set(), bySerial: new Set() }
 
     if (existing.byName.has(nameKey) || (serialKey && existing.bySerial.has(serialKey))) {
       results.push({ index: idx + 1, name, itemType, status: 'skipped', message: 'Déjà existant.' })
@@ -348,20 +421,15 @@ export async function importAssetsFromRows(
       createPayload: (n) => ({ name: n }),
     })
 
-    const modelId =
-      itemType === 'Monitor'
-        ? await getOrCreateByName({
-          path: '/Dropdowns/MonitorModel',
-          name: modelName,
-          cache: monitorModels,
-          createPayload: (n) => ({ name: n }),
-        })
-        : await getOrCreateByName({
-          path: '/Dropdowns/ComputerModel',
-          name: modelName,
-          cache: computerModels,
-          createPayload: (n) => ({ name: n }),
-        })
+    let modelId = undefined;
+    if (modelName && modelCaches[itemType]) {
+      modelId = await getOrCreateByName({
+        path: `/Dropdowns/${itemType}Model`,
+        name: modelName,
+        cache: modelCaches[itemType],
+        createPayload: (n) => ({ name: n }),
+      });
+    }
 
     let users_id = null
     const userPayload = buildUserFromDisplay(userDisplay)
@@ -385,8 +453,54 @@ export async function importAssetsFromRows(
         model: modelId ? { id: modelId } : undefined,
       })
 
-      const response = await post(`/Assets/${itemType}`, payload)
-      const createdId = extractIdFromResponse(response?.data)
+      // Try custom API, fallback to legacy
+      let response;
+      let createdId;
+      
+      const isCustomSupported = CUSTOM_API_SUPPORTED.includes(itemType);
+
+      try {
+        if (isCustomSupported) {
+          response = await post(`/Assets/${itemType}`, payload)
+          createdId = extractIdFromResponse(response?.data)
+        } else {
+          // Flatten payload for Legacy API (e.g. states_id instead of status: {id})
+          const legacyPayload = {
+            name,
+            states_id: statusId || 0,
+            locations_id: locationId || 0,
+            manufacturers_id: manufacturerId || 0,
+            otherserial: inventoryNumber,
+            users_id: users_id || 0,
+          };
+          if (modelId) {
+             const modelField = `${itemType.toLowerCase()}models_id`;
+             legacyPayload[modelField] = modelId;
+          }
+          response = await Legacy.post(`/${itemType}`, compactObject(legacyPayload))
+          createdId = extractIdFromResponse(response?.data) || extractIdFromResponse(response)
+        }
+      } catch (err) {
+        if (err.response && err.response.status === 404 && isCustomSupported) {
+          // Flatten payload for Legacy API (e.g. states_id instead of status: {id})
+          const legacyPayload = {
+            name,
+            states_id: statusId || 0,
+            locations_id: locationId || 0,
+            manufacturers_id: manufacturerId || 0,
+            otherserial: inventoryNumber,
+            users_id: users_id || 0,
+          };
+          if (modelId) {
+             const modelField = `${itemType.toLowerCase()}models_id`;
+             legacyPayload[modelField] = modelId;
+          }
+          response = await Legacy.post(`/${itemType}`, compactObject(legacyPayload))
+          createdId = extractIdFromResponse(response?.data) || extractIdFromResponse(response)
+        } else {
+          throw err
+        }
+      }
 
       existing.byName.add(nameKey)
       if (serialKey) existing.bySerial.add(serialKey)
