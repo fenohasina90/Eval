@@ -95,3 +95,10 @@ export const ASSET_TYPES = [
   { key: 'PDU', label: 'PDU', path: '/Assets/PDU' },
   { key: 'Cable', label: 'Câbles', path: '/Assets/Cable' },
 ]
+
+
+
+Maintenant, dans le front office, Créer 1 page pour créer un ticket, on peut associer plusieurs éléments au ticket comme dans le glpi.
+
+
+le page c'est uniquement pour l'affichage mais on met les logique et metier dans un nouveau fichier dans [services](file;file:///c%3A/xampp/htdocs/glpi/1_NewApp/frontend/src/services) 

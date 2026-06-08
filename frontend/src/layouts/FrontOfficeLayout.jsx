@@ -9,6 +9,7 @@ import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 
 const navItems = [
   { path: '/front', label: 'Mes éléments', icon: TicketIcon },
+  { path: '/front/create-ticket', label: 'Créer un ticket', icon: PlusIcon },
 ]
 
 export default function FrontOfficeLayout() {
@@ -132,6 +133,14 @@ function BackIcon({ className }) {
         strokeWidth={1.5}
         d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3"
       />
+    </svg>
+  )
+}
+
+function PlusIcon({ className }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4.5v15m7.5-7.5h-15" />
     </svg>
   )
 }

@@ -12,6 +12,7 @@ import Reset from '../pages/Reset/reset'
 import ImportData from '../pages/Import/ImportData'
 import FrontOfficeLayout from '../layouts/FrontOfficeLayout'
 import ElementList from '../pages/FrontOffice/ElementList'
+import CreateTicket from '../pages/FrontOffice/CreateTicket'
 
 const router = createBrowserRouter([
   {
@@ -34,7 +35,8 @@ const router = createBrowserRouter([
     path: '/front',
     element: <FrontOfficeLayout />,
     children: [
-      { index: true, element: <ElementList /> }
+      { index: true, element: <ElementList /> },
+      { path: 'create-ticket', element: <CreateTicket /> }
     ]
   }
 ])
