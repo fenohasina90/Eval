@@ -12,9 +12,30 @@ import {
   Badge,
   Modal,
   Checkbox,
+  Kanban,
   H1, H2, H3, H4, P, Small, Label,
   Table, Thead, Tbody, Tr, Th, Td,
 } from '../components'
+
+/* ─── Données de démo pour le Kanban ─── */
+const KANBAN_COLUMNS = [
+  { id: 1, title: 'Nouveau',          color: 'blue',   icon: '🆕' },
+  { id: 2, title: 'En cours (Assigné)', color: 'amber',  icon: '⚡' },
+  { id: 3, title: 'En cours (Planifié)', color: 'orange', icon: '📅' },
+  { id: 4, title: 'En attente',        color: 'purple', icon: '⏳' },
+  { id: 5, title: 'Résolu',            color: 'green',  icon: '✅' },
+]
+
+const INITIAL_TICKETS = [
+  { id: 101, name: 'Écran noir au démarrage du poste RH-PC04',           status: 1, priority: 4, type: 1, date_creation: '2026-06-01 09:15:00' },
+  { id: 102, name: 'Installer Microsoft Office sur le PC de Marie',      status: 1, priority: 2, type: 2, date_creation: '2026-06-02 11:30:00' },
+  { id: 103, name: 'Imprimante RDC bloquée - bourrage papier',           status: 2, priority: 5, type: 1, date_creation: '2026-05-28 14:00:00' },
+  { id: 104, name: 'Demande de nouveau casque audio USB',                status: 2, priority: 2, type: 2, date_creation: '2026-06-03 08:45:00' },
+  { id: 105, name: 'VPN ne fonctionne plus depuis mise à jour Windows',  status: 4, priority: 4, type: 1, date_creation: '2026-05-30 16:20:00' },
+  { id: 106, name: 'Création de compte Active Directory - nouveau CDI',  status: 3, priority: 3, type: 2, date_creation: '2026-06-04 10:00:00' },
+  { id: 107, name: 'Remplacement disque dur SSD poste comptabilité',     status: 5, priority: 3, type: 1, date_creation: '2026-05-25 13:10:00' },
+  { id: 108, name: 'Mise à jour firmware switch Cisco étage 2',          status: 4, priority: 5, type: 1, date_creation: '2026-06-05 07:30:00' },
+]
 
 export default function Exemple() {
   const [inputValue, setInputValue] = useState('')
@@ -22,10 +43,18 @@ export default function Exemple() {
   const [textareaValue, setTextareaValue] = useState('')
   const [isChecked, setIsChecked] = useState(false)
   const [showModal, setShowModal] = useState(false)
+  const [kanbanItems, setKanbanItems] = useState(INITIAL_TICKETS)
   const [clickCount, setClickCount] = useState(0)
 
+  // Handler de déplacement drag & drop
+  const handleItemMove = (itemId, fromColumnId, toColumnId) => {
+    setKanbanItems((prev) =>
+      prev.map((t) => (t.id === itemId ? { ...t, status: toColumnId } : t))
+    )
+  }
+
   return (
-    <div className="max-w-4xl mx-auto space-y-12">
+    <div className="max-w-7xl mx-auto space-y-12">
 
       {/* ─── Typographie ─── */}
       <section className="space-y-4">
@@ -352,6 +381,40 @@ export default function Exemple() {
             </div>
           </Card.Body>
         </Card>
+      </section>
+
+      {/* ─── Kanban Board ─── */}
+      <section className="space-y-4">
+        <H2 className="border-b border-gray-200 pb-2">Kanban Board</H2>
+        <P>
+          Glissez-déposez les tickets entre les colonnes pour changer leur statut.
+          Le composant est entièrement générique et fonctionne avec n'importe quelles données.
+        </P>
+        <Kanban
+          columns={KANBAN_COLUMNS}
+          items={kanbanItems}
+          getColumnId={(t) => t.status}
+          onItemMove={handleItemMove}
+          renderCard={(ticket) => (
+            <Kanban.TicketCard
+              ticket={ticket}
+              onClick={() => alert(`Ticket #${ticket.id} : ${ticket.name}`)}
+            />
+          )}
+          emptyMessage="Aucun ticket"
+        />
+        <div className="flex gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setKanbanItems(INITIAL_TICKETS)}
+          >
+            Réinitialiser
+          </Button>
+          <Small className="self-center text-gray-500">
+            {kanbanItems.length} tickets au total
+          </Small>
+        </div>
       </section>
 
       <div className="pb-8" />

@@ -10,6 +10,7 @@ import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 const navItems = [
   { path: '/front', label: 'Mes éléments', icon: TicketIcon },
   { path: '/front/create-ticket', label: 'Créer un ticket', icon: PlusIcon },
+  { path: '/front/tickets-kanban', label: 'Tickets (Kanban)', icon: KanbanIcon },
 ]
 
 export default function FrontOfficeLayout() {
@@ -141,6 +142,19 @@ function PlusIcon({ className }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4.5v15m7.5-7.5h-15" />
+    </svg>
+  )
+}
+
+function KanbanIcon({ className }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.5}
+        d="M5.25 6.75h6a.75.75 0 01.75.75v12a.75.75 0 01-.75.75h-6a.75.75 0 01-.75-.75v-12a.75.75 0 01.75-.75Zm7.5 0h6a.75.75 0 01.75.75v6a.75.75 0 01-.75.75h-6a.75.75 0 01-.75-.75v-6a.75.75 0 01.75-.75Z"
+      />
     </svg>
   )
 }

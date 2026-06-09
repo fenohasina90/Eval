@@ -19,6 +19,7 @@ export { default as Grid } from './Grid'
 export { default as Container } from './Container'
 export { default as CheckboxCard } from './CheckboxCard'
 export { default as TrackingItem } from './TrackingItem'
+export { default as Kanban } from './Kanban'
 
 export { H1, H2, H3, H4, P, Small, Label } from './Typography'
 export { Table, Thead, Tbody, Tr, Th, Td } from './Table'

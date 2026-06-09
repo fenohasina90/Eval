@@ -13,6 +13,7 @@ import ImportData from '../pages/Import/ImportData'
 import FrontOfficeLayout from '../layouts/FrontOfficeLayout'
 import ElementList from '../pages/FrontOffice/ElementList'
 import CreateTicket from '../pages/FrontOffice/CreateTicket'
+import TicketKanban from '../pages/FrontOffice/TicketKanban'
 
 const router = createBrowserRouter([
   {
@@ -36,7 +37,8 @@ const router = createBrowserRouter([
     element: <FrontOfficeLayout />,
     children: [
       { index: true, element: <ElementList /> },
-      { path: 'create-ticket', element: <CreateTicket /> }
+      { path: 'create-ticket', element: <CreateTicket /> },
+      { path: 'tickets-kanban', element: <TicketKanban /> },
     ]
   }
 ])

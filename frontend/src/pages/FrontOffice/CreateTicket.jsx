@@ -70,13 +70,17 @@ const ACTION_TIMES = [
     { value: '28800', label: '8 heures' }
 ];
 
-export default function CreateTicket() {
+export function CreateTicketForm({
+    forcedStatus = null,
+    lockStatus = false,
+    onCreated = null
+}) {
     const [ticketData, setTicketData] = useState({
         name: '',
         content: '',
         date: '',
         type: '1',
-        status: '1',
+        status: forcedStatus ?? '1',
         urgency: '3',
         impact: '3',
         priority: '3',
@@ -107,6 +111,11 @@ export default function CreateTicket() {
         };
         loadInitData();
     }, []);
+
+    useEffect(() => {
+        if (forcedStatus == null) return;
+        setTicketData((prev) => ({ ...prev, status: String(forcedStatus) }));
+    }, [forcedStatus]);
 
     // Chargement dynamique des éléments quand le type change
     useEffect(() => {
@@ -167,10 +176,11 @@ export default function CreateTicket() {
         try {
             const result = await createTicketWithItems(ticketData, selectedItems);
             setSubmitSuccess(`Le ticket a été créé avec succès (ID: ${result.ticketId}).`);
+            if (onCreated) onCreated(result);
             
             // Réinitialiser le formulaire
             setTicketData({
-                name: '', content: '', date: '', type: '1', status: '1', 
+                name: '', content: '', date: '', type: '1', status: forcedStatus ?? '1', 
                 urgency: '3', impact: '3', priority: '3', locations_id: '0', actiontime: '0'
             });
             setSelectedItems([]);
@@ -183,12 +193,7 @@ export default function CreateTicket() {
     };
 
     return (
-        <Container size="5xl">
-            <div className="mb-6">
-                <H1>Créer un Ticket</H1>
-                <p className="text-gray-600">Déclarez un incident ou une demande avec tous les paramètres nécessaires.</p>
-            </div>
-
+        <>
             {submitSuccess && <Alert variant="success" className="mb-6">{submitSuccess}</Alert>}
             {submitError && <Alert variant="danger" className="mb-6">{submitError}</Alert>}
 
@@ -255,12 +260,18 @@ export default function CreateTicket() {
 
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-gray-700">Statut</label>
-                                <Select
-                                    value={ticketData.status}
-                                    onChange={(e) => setTicketData({ ...ticketData, status: e.target.value })}
-                                >
-                                    {TICKET_STATUSES.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-                                </Select>
+                                {lockStatus ? (
+                                    <div className="text-sm text-gray-700 px-3 py-2 rounded-md border border-gray-200 bg-gray-50">
+                                        {TICKET_STATUSES.find((s) => s.value === String(ticketData.status))?.label || 'Nouveau'}
+                                    </div>
+                                ) : (
+                                    <Select
+                                        value={ticketData.status}
+                                        onChange={(e) => setTicketData({ ...ticketData, status: e.target.value })}
+                                    >
+                                        {TICKET_STATUSES.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                                    </Select>
+                                )}
                             </div>
 
                             <div className="space-y-2">
@@ -384,6 +395,18 @@ export default function CreateTicket() {
                     </Button>
                 </div>
             </form>
+        </>
+    );
+}
+
+export default function CreateTicket() {
+    return (
+        <Container size="5xl">
+            <div className="mb-6">
+                <H1>Créer un Ticket</H1>
+                <p className="text-gray-600">Déclarez un incident ou une demande avec tous les paramètres nécessaires.</p>
+            </div>
+            <CreateTicketForm />
         </Container>
     );
 }

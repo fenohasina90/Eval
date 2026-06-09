@@ -31,7 +31,8 @@ export default function Modal({
       <div
         className={`
           relative z-10 bg-white rounded-2xl shadow-xl
-          w-full max-w-md mx-4
+          w-full max-w-5xl mx-4
+          flex flex-col max-h-[90vh]
           animate-[fadeIn_0.2s_ease-out]
           ${className}
         `}
@@ -53,7 +54,7 @@ export default function Modal({
         )}
 
         {/* Body */}
-        <div className="px-6 py-4">
+        <div className="px-6 py-4 overflow-y-auto flex-1">
           {children}
         </div>
       </div>
