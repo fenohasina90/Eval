@@ -115,6 +115,76 @@ export async function getTicketDetails(ticketId) {
   return response?.data
 }
 
+function normalizeUserRef(userValue) {
+  if (!userValue) return null
+  if (typeof userValue === 'object') {
+    const id = userValue.id != null ? Number(userValue.id) : null
+    const name = userValue.name || userValue.completename || userValue.realname || userValue.firstname
+    return { id: id && !Number.isNaN(id) ? id : null, name: name ? String(name) : null }
+  }
+  const id = Number(userValue)
+  if (!id || Number.isNaN(id)) return null
+  return { id, name: null }
+}
+
+function normalizeLegacyListResponse(data) {
+  const extracted = extractItems(data)
+  if (extracted.length > 0) return extracted
+  if (data && typeof data === 'object') {
+    const values = Object.values(data)
+    if (values.every((v) => v && typeof v === 'object')) return values
+  }
+  return []
+}
+
+async function fetchTicketUserRows(ticketId) {
+  const id = Number(ticketId)
+  if (!id || Number.isNaN(id)) return []
+
+  const attempts = [
+    () => Legacy.get(`/Ticket/${id}/Ticket_User`, { expand_dropdowns: true, range: '0-9999' }),
+    () => Legacy.get(`/Ticket/${id}/Ticket_User/`, { expand_dropdowns: true, range: '0-9999' }),
+    () => Legacy.get('/Ticket_User', { expand_dropdowns: true, range: '0-9999', tickets_id: id }),
+    () => Legacy.get('/Ticket_User', { expand_dropdowns: true, range: '0-9999' }),
+  ]
+
+  for (let i = 0; i < attempts.length; i++) {
+    try {
+      const response = await attempts[i]()
+      const rows = normalizeLegacyListResponse(response?.data)
+      if (rows.length === 0) continue
+      const filtered = rows.filter((r) => Number(r?.tickets_id) === id)
+      if (filtered.length > 0) return filtered
+      if (i < 3) continue
+      return []
+    } catch {
+      continue
+    }
+  }
+
+  return []
+}
+
+export async function getTicketActors(ticketId) {
+  const items = await fetchTicketUserRows(ticketId)
+
+  const requesters = []
+  const assignees = []
+  const observers = []
+
+  items.forEach((row) => {
+    const type = Number(row?.type)
+    const user = normalizeUserRef(row?.users_id)
+    if (!user) return
+
+    if (type === 1) requesters.push(user)
+    if (type === 2) assignees.push(user)
+    if (type === 3) observers.push(user)
+  })
+
+  return { requesters, assignees, observers }
+}
+
 export async function updateTicketStatus(ticketId, toStatus, extra = {}) {
   const basePayload = compactObject({
     id: Number(ticketId),

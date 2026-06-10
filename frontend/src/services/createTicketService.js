@@ -1,14 +1,42 @@
 import { Legacy } from './api';
 
+function extractItems(data) {
+    if (Array.isArray(data)) return data;
+    if (Array.isArray(data?.data)) return data.data;
+    if (Array.isArray(data?.items)) return data.items;
+    if (Array.isArray(data?.results)) return data.results;
+    return [];
+}
+
+function normalizeUserId(value) {
+    const n = Number(value);
+    if (!n || Number.isNaN(n)) return null;
+    return n;
+}
+
+async function createTicketUserActor({ tickets_id, users_id, type }) {
+    return Legacy.post('/Ticket_User', { tickets_id, users_id, type });
+}
+
+export async function fetchUsersForActors({ range = '0-200' } = {}) {
+    const response = await Legacy.get('/User', { range });
+    const items = extractItems(response?.data);
+    return (items || []).filter((u) => u && u.id != null);
+}
+
 /**
  * Crée un ticket et l'associe à plusieurs actifs
  * @param {Object} ticketData - Titre et description du ticket
  * @param {string} ticketData.name - Le titre du ticket
  * @param {string} ticketData.content - La description du problème
  * @param {Array} selectedItems - Liste des actifs sélectionnés (doivent contenir {itemtype, id})
+ * @param {Object} actors - Acteurs (optionnel)
+ * @param {string|number} actors.requesterId - Demandeur (User.id)
+ * @param {string|number} actors.assigneeId - Assigné à (User.id)
+ * @param {Array<string|number>} actors.observerIds - Observateurs (User.id[])
  * @returns {Promise<Object>} Le ticket créé
  */
-export async function createTicketWithItems(ticketData, selectedItems = []) {
+export async function createTicketWithItems(ticketData, selectedItems = [], actors = null) {
     try {
         // 1. Création de l'entête du ticket
         const inputData = {
@@ -57,7 +85,49 @@ export async function createTicketWithItems(ticketData, selectedItems = []) {
             await Promise.all(associationPromises);
         }
 
-        return { success: true, ticketId };
+        const warnings = [];
+
+        // 3. Association des acteurs (Ticket_User)
+        if (actors) {
+            const requesterId = normalizeUserId(actors.requesterId);
+            const assigneeId = normalizeUserId(actors.assigneeId);
+            const observerIdsRaw = Array.isArray(actors.observerIds) ? actors.observerIds : [];
+
+            const observerIds = Array.from(new Set(observerIdsRaw.map(normalizeUserId).filter(Boolean)));
+
+            const actorPromises = [];
+
+            if (requesterId) {
+                actorPromises.push(
+                    createTicketUserActor({ tickets_id: ticketId, users_id: requesterId, type: 1 }).catch(() => {
+                        warnings.push(`Impossible d'ajouter le demandeur (user_id=${requesterId}).`);
+                        return null;
+                    })
+                );
+            }
+
+            observerIds.forEach((userId) => {
+                actorPromises.push(
+                    createTicketUserActor({ tickets_id: ticketId, users_id: userId, type: 3 }).catch(() => {
+                        warnings.push(`Impossible d'ajouter l'observateur (user_id=${userId}).`);
+                        return null;
+                    })
+                );
+            });
+
+            if (assigneeId) {
+                actorPromises.push(
+                    createTicketUserActor({ tickets_id: ticketId, users_id: assigneeId, type: 2 }).catch(() => {
+                        warnings.push(`Impossible d'ajouter l'attribution (user_id=${assigneeId}).`);
+                        return null;
+                    })
+                );
+            }
+
+            if (actorPromises.length > 0) await Promise.all(actorPromises);
+        }
+
+        return { success: true, ticketId, warnings };
     } catch (error) {
         console.error("Erreur lors de la création du ticket avec ses actifs", error);
         throw error;

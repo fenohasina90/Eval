@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { searchElements, getDropdowns } from '../../services/frontOfficeService';
-import { createTicketWithItems } from '../../services/createTicketService';
+import { createTicketWithItems, fetchUsersForActors } from '../../services/createTicketService';
 import {
     Container,
     H1,
@@ -16,19 +16,19 @@ const TYPE_OPTIONS = [
     { value: 'Computer', label: 'Ordinateurs' },
     { value: 'Monitor', label: 'Écrans' },
     { value: 'Printer', label: 'Imprimantes' },
-    { value: 'NetworkEquipment', label: 'Matériel réseau' },
-    { value: 'Peripheral', label: 'Périphériques' },
+    // { value: 'NetworkEquipment', label: 'Matériel réseau' },
+    // { value: 'Peripheral', label: 'Périphériques' },
     { value: 'Phone', label: 'Téléphones' },
-    { value: 'Rack', label: 'Baies' },
-    { value: 'Enclosure', label: 'Châssis' },
-    { value: 'Software', label: 'Logiciels' },
-    { value: 'PassiveDCEquipment', label: 'Équipements passifs' },
-    { value: 'PDU', label: 'PDU' },
-    { value: 'Cable', label: 'Câbles' },
-    { value: 'Unmanaged', label: 'Actif non géré' },
-    { value: 'Appliance', label: 'Applicatif' },
-    { value: 'SoftwareLicense', label: 'Licence' },
-    { value: 'Certificate', label: 'Certificat' }
+    // { value: 'Rack', label: 'Baies' },
+    // { value: 'Enclosure', label: 'Châssis' },
+    // { value: 'Software', label: 'Logiciels' },
+    // { value: 'PassiveDCEquipment', label: 'Équipements passifs' },
+    // { value: 'PDU', label: 'PDU' },
+    // { value: 'Cable', label: 'Câbles' },
+    // { value: 'Unmanaged', label: 'Actif non géré' },
+    // { value: 'Appliance', label: 'Applicatif' },
+    // { value: 'SoftwareLicense', label: 'Licence' },
+    // { value: 'Certificate', label: 'Certificat' }
 ];
 
 const TICKET_TYPES = [
@@ -89,6 +89,15 @@ export function CreateTicketForm({
     });
 
     const [locations, setLocations] = useState([]);
+
+    const [users, setUsers] = useState([]);
+    const [usersLoading, setUsersLoading] = useState(false);
+    const [usersError, setUsersError] = useState('');
+
+    const [requesterId, setRequesterId] = useState('');
+    const [assigneeId, setAssigneeId] = useState('');
+    const [observerIds, setObserverIds] = useState([]);
+    const [observerToAdd, setObserverToAdd] = useState('');
     
     // Éléments associés
     const [selectedItems, setSelectedItems] = useState([]);
@@ -110,6 +119,23 @@ export function CreateTicketForm({
             setLocations(dropdowns.locations || []);
         };
         loadInitData();
+    }, []);
+
+    useEffect(() => {
+        const loadUsers = async () => {
+            setUsersLoading(true);
+            setUsersError('');
+            try {
+                const data = await fetchUsersForActors({ range: '0-200' });
+                setUsers(Array.isArray(data) ? data : []);
+            } catch (err) {
+                setUsersError(err?.message || "Erreur lors du chargement des utilisateurs.");
+                setUsers([]);
+            } finally {
+                setUsersLoading(false);
+            }
+        };
+        loadUsers();
     }, []);
 
     useEffect(() => {
@@ -146,6 +172,12 @@ export function CreateTicketForm({
         return t ? t.label : type;
     };
 
+    const getUserLabel = (user) => {
+        const name = user?.name || user?.realname || user?.firstname || user?.completename || user?.displayname;
+        if (name) return `${name} (#${user.id})`;
+        return `Utilisateur #${user?.id}`;
+    };
+
     const handleAddItem = () => {
         if (!selectedType || !selectedItemId) return;
         
@@ -162,6 +194,17 @@ export function CreateTicketForm({
         setSelectedItems(selectedItems.filter(item => !(item.id === itemToRemove.id && item.itemtype === itemToRemove.itemtype)));
     };
 
+    const handleAddObserver = () => {
+        if (!observerToAdd) return;
+        if (!observerIds.includes(String(observerToAdd))) {
+            setObserverIds([...observerIds, String(observerToAdd)]);
+        }
+    };
+
+    const handleRemoveObserver = (idToRemove) => {
+        setObserverIds(observerIds.filter((id) => String(id) !== String(idToRemove)));
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!ticketData.name || !ticketData.content) {
@@ -174,8 +217,16 @@ export function CreateTicketForm({
         setSubmitSuccess('');
 
         try {
-            const result = await createTicketWithItems(ticketData, selectedItems);
-            setSubmitSuccess(`Le ticket a été créé avec succès (ID: ${result.ticketId}).`);
+            const result = await createTicketWithItems(ticketData, selectedItems, {
+                requesterId,
+                assigneeId,
+                observerIds,
+            });
+
+            const warnings = Array.isArray(result?.warnings) ? result.warnings : [];
+            setSubmitSuccess(
+                `Le ticket a été créé avec succès (ID: ${result.ticketId}).${warnings.length ? ` ${warnings.join(' ')}` : ''}`
+            );
             if (onCreated) onCreated(result);
             
             // Réinitialiser le formulaire
@@ -185,6 +236,10 @@ export function CreateTicketForm({
             });
             setSelectedItems([]);
             setSelectedType('');
+            setRequesterId('');
+            setAssigneeId('');
+            setObserverIds([]);
+            setObserverToAdd('');
         } catch (err) {
             setSubmitError(err.message || "Une erreur est survenue lors de la création du ticket.");
         } finally {
@@ -319,7 +374,109 @@ export function CreateTicketForm({
 
                 <Card>
                     <Card.Body className="space-y-6">
-                        <h2 className="text-lg font-medium text-gray-900 border-b pb-2">2. Éléments associés</h2>
+                        <h2 className="text-lg font-medium text-gray-900 border-b pb-2">2. Acteurs</h2>
+
+                        {usersError && (
+                            <div className="text-sm text-red-600">{usersError}</div>
+                        )}
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-gray-700">Demandeur</label>
+                                <Select
+                                    value={requesterId}
+                                    onChange={(e) => setRequesterId(e.target.value)}
+                                    disabled={usersLoading}
+                                >
+                                    <option value="">Par défaut</option>
+                                    {users.map((u) => (
+                                        <option key={`req-${u.id}`} value={u.id}>
+                                            {getUserLabel(u)}
+                                        </option>
+                                    ))}
+                                </Select>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-gray-700">Attribuer à</label>
+                                <Select
+                                    value={assigneeId}
+                                    onChange={(e) => setAssigneeId(e.target.value)}
+                                    disabled={usersLoading}
+                                >
+                                    <option value="">Aucune</option>
+                                    {users.map((u) => (
+                                        <option key={`ass-${u.id}`} value={u.id}>
+                                            {getUserLabel(u)}
+                                        </option>
+                                    ))}
+                                </Select>
+                            </div>
+                        </div>
+
+                        <div className="bg-gray-50 p-4 rounded-lg space-y-4">
+                            <h3 className="text-sm font-medium text-gray-700">Observateurs</h3>
+
+                            <div className="flex flex-col md:flex-row gap-4 items-end">
+                                <div className="flex-1 space-y-1">
+                                    <label className="text-xs text-gray-500">Utilisateur</label>
+                                    <Select
+                                        value={observerToAdd}
+                                        onChange={(e) => setObserverToAdd(e.target.value)}
+                                        disabled={usersLoading}
+                                    >
+                                        <option value="">Choisir un utilisateur</option>
+                                        {users.map((u) => (
+                                            <option key={`obs-opt-${u.id}`} value={u.id}>
+                                                {getUserLabel(u)}
+                                            </option>
+                                        ))}
+                                    </Select>
+                                </div>
+
+                                <Button
+                                    type="button"
+                                    variant="secondary"
+                                    onClick={handleAddObserver}
+                                    disabled={usersLoading || !observerToAdd}
+                                >
+                                    Ajouter
+                                </Button>
+                            </div>
+
+                            {observerIds.length > 0 && (
+                                <div className="space-y-2">
+                                    <div className="text-sm font-medium text-gray-700">
+                                        Observateurs sélectionnés ({observerIds.length}) :
+                                    </div>
+                                    <div className="flex flex-col gap-2">
+                                        {observerIds.map((id) => {
+                                            const user = users.find((u) => String(u.id) === String(id));
+                                            return (
+                                                <div key={`obs-${id}`} className="flex items-center justify-between p-3 bg-white border border-indigo-100 rounded-lg shadow-sm">
+                                                    <div className="font-medium text-gray-900">
+                                                        {user ? getUserLabel(user) : `Utilisateur #${id}`}
+                                                    </div>
+                                                    <Button type="button" variant="danger" size="sm" onClick={() => handleRemoveObserver(id)}>
+                                                        Retirer
+                                                    </Button>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                        
+                        {usersLoading && (
+                            <div className="text-sm text-gray-500">Chargement des utilisateurs…</div>
+                        )}
+                    </Card.Body>
+                </Card>
+
+                <Card>
+                    <Card.Body className="space-y-6">
+                        <h2 className="text-lg font-medium text-gray-900 border-b pb-2">3. Éléments associés</h2>
                         
                         <div className="bg-gray-50 p-4 rounded-lg space-y-4">
                             <h3 className="text-sm font-medium text-gray-700">Sélectionner un actif à associer</h3>

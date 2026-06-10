@@ -7,6 +7,7 @@ import {
   fetchKanbanTickets,
   formatStatusLabel,
   getMoveDialogConfig,
+  getTicketActors,
   getTicketDetails,
   getTicketStatusId,
   updateTicketStatus,
@@ -41,6 +42,18 @@ function formatPriorityLabel(priorityValue) {
   return '—'
 }
 
+function formatActorsList(list) {
+  const items = Array.isArray(list) ? list : []
+  if (items.length === 0) return '—'
+  return items
+    .map((u) => {
+      if (u?.name) return `${u.name} (#${u.id || '?'})`
+      if (u?.id) return `Utilisateur #${u.id}`
+      return '—'
+    })
+    .join(', ')
+}
+
 export default function TicketKanban() {
   const [tickets, setTickets] = useState([])
   const [loading, setLoading] = useState(true)
@@ -50,6 +63,9 @@ export default function TicketKanban() {
   const [detailsTicket, setDetailsTicket] = useState(null)
   const [detailsLoading, setDetailsLoading] = useState(false)
   const [detailsError, setDetailsError] = useState('')
+  const [detailsActors, setDetailsActors] = useState(null)
+  const [detailsActorsLoading, setDetailsActorsLoading] = useState(false)
+  const [detailsActorsError, setDetailsActorsError] = useState('')
 
   const [moveOpen, setMoveOpen] = useState(false)
   const [pendingMove, setPendingMove] = useState(null)
@@ -91,14 +107,33 @@ export default function TicketKanban() {
     setDetailsOpen(true)
     setDetailsError('')
     setDetailsLoading(true)
+    setDetailsActors(null)
+    setDetailsActorsError('')
+    setDetailsActorsLoading(true)
     setDetailsTicket(ticket)
     try {
-      const details = await getTicketDetails(ticketId)
-      if (details) setDetailsTicket(details)
+      const [detailsResult, actorsResult] = await Promise.allSettled([
+        getTicketDetails(ticketId),
+        getTicketActors(ticketId),
+      ])
+
+      if (detailsResult.status === 'fulfilled' && detailsResult.value) {
+        setDetailsTicket(detailsResult.value)
+      }
+      if (actorsResult.status === 'fulfilled' && actorsResult.value) {
+        setDetailsActors(actorsResult.value)
+      }
+      if (detailsResult.status === 'rejected') {
+        setDetailsError(detailsResult.reason?.message || 'Erreur lors du chargement des détails.')
+      }
+      if (actorsResult.status === 'rejected') {
+        setDetailsActorsError(actorsResult.reason?.message || 'Erreur lors du chargement des acteurs.')
+      }
     } catch (err) {
       setDetailsError(err?.message || 'Erreur lors du chargement des détails.')
     } finally {
       setDetailsLoading(false)
+      setDetailsActorsLoading(false)
     }
   }, [])
 
@@ -107,6 +142,9 @@ export default function TicketKanban() {
     setDetailsTicket(null)
     setDetailsError('')
     setDetailsLoading(false)
+    setDetailsActors(null)
+    setDetailsActorsError('')
+    setDetailsActorsLoading(false)
   }, [])
 
   const resetMoveState = useCallback(() => {
@@ -238,6 +276,12 @@ export default function TicketKanban() {
         {detailsError && (
           <div className="text-sm text-red-600">{detailsError}</div>
         )}
+        {detailsActorsLoading && (
+          <div className="text-sm text-gray-500">Chargement des acteurs…</div>
+        )}
+        {detailsActorsError && (
+          <div className="text-sm text-red-600">{detailsActorsError}</div>
+        )}
         {detailsTicket && (
           <div className="space-y-4">
             <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
@@ -255,8 +299,9 @@ export default function TicketKanban() {
               <FieldRow label="Priorité" value={formatPriorityLabel(detailsTicket.priority)} />
               <FieldRow label="Date de création" value={detailsTicket.date_creation} />
               <FieldRow label="Dernière modification" value={detailsTicket.date_mod} />
-              <FieldRow label="Demandeur" value={detailsTicket.users_id_recipient?.name || detailsTicket.users_id_recipient} />
-              <FieldRow label="Assigné à" value={detailsTicket.users_id_assign?.name || detailsTicket.users_id_assign} />
+              <FieldRow label="Demandeur" value={formatActorsList(detailsActors?.requesters)} />
+              <FieldRow label="Attribué à" value={formatActorsList(detailsActors?.assignees)} />
+              <FieldRow label="Observateurs" value={formatActorsList(detailsActors?.observers)} />
             </div>
 
             <div className="rounded-xl border border-gray-100 bg-white p-4">
