@@ -1,5 +1,5 @@
-import { useCallback, useMemo, useState } from 'react'
-import { Alert, Button, Card, Container, H1, Input, Select } from '../../components'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Alert, Button, Card, Container, H1, Input, Select, Loading } from '../../components'
 import {
   getKanbanCustomization,
   resetKanbanCustomization,
@@ -40,15 +40,43 @@ function toHexColor(value) {
   return PRESET_TO_HEX[raw] || PRESET_TO_HEX.gray
 }
 
+const DEFAULT_CUSTOMIZATION = {
+  colorsByStatus: {
+    [KANBAN_TICKET_STATUSES.NEW]: 'blue',
+    [KANBAN_TICKET_STATUSES.IN_PROGRESS]: 'amber',
+    [KANBAN_TICKET_STATUSES.CLOSED]: 'green',
+  },
+  labelsByStatus: {
+    [KANBAN_TICKET_STATUSES.NEW]: 'Nouveau',
+    [KANBAN_TICKET_STATUSES.IN_PROGRESS]: 'En cours (Attribué)',
+    [KANBAN_TICKET_STATUSES.CLOSED]: 'Terminé (Clos)',
+  },
+}
+
 export default function Personalisation() {
-  const [form, setForm] = useState(() => getKanbanCustomization())
+  const [form, setForm] = useState(DEFAULT_CUSTOMIZATION)
   const [saved, setSaved] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
 
   const rows = useMemo(() => ([
     { statusId: KANBAN_TICKET_STATUSES.NEW, label: 'Nouveau' },
     { statusId: KANBAN_TICKET_STATUSES.IN_PROGRESS, label: 'En cours' },
     { statusId: KANBAN_TICKET_STATUSES.CLOSED, label: 'Terminé' },
   ]), [])
+
+  const loadCustomization = useCallback(async () => {
+    try {
+      const customization = await getKanbanCustomization()
+      setForm(customization)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    loadCustomization()
+  }, [loadCustomization])
 
   const setStatusColor = useCallback((statusId, color) => {
     setForm((prev) => ({
@@ -85,27 +113,39 @@ export default function Personalisation() {
     setSaved(false)
   }, [])
 
-  const handleSave = useCallback(() => {
-    setKanbanCustomization(form)
-    setSaved(true)
+  const handleSave = useCallback(async () => {
+    setSaving(true)
+    try {
+      await setKanbanCustomization(form)
+      setSaved(true)
+    } finally {
+      setSaving(false)
+    }
   }, [form])
 
-  const handleReset = useCallback(() => {
-    resetKanbanCustomization()
-    setForm(getKanbanCustomization())
-    setSaved(true)
-  }, [])
+  const handleReset = useCallback(async () => {
+    setSaving(true)
+    try {
+      await resetKanbanCustomization()
+      await loadCustomization()
+      setSaved(true)
+    } finally {
+      setSaving(false)
+    }
+  }, [loadCustomization])
+
+  if (loading) return <Loading message="Chargement des paramètres..." />
 
   return (
     <Container size="4xl">
       <div className="flex items-center justify-between gap-3 mb-5">
         <H1>Personnalisation</H1>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={handleReset}>
+          <Button variant="outline" onClick={handleReset} disabled={saving}>
             Réinitialiser
           </Button>
-          <Button variant="primary" onClick={handleSave}>
-            Enregistrer
+          <Button variant="primary" onClick={handleSave} disabled={saving}>
+            {saving ? 'Enregistrement...' : 'Enregistrer'}
           </Button>
         </div>
       </div>
@@ -128,7 +168,7 @@ export default function Personalisation() {
         <Card.Body>
           <div className="space-y-4">
             <div className="flex items-center justify-end">
-              <Button variant="secondary" size="sm" onClick={applyMalagasyExamples}>
+              <Button variant="secondary" size="sm" onClick={applyMalagasyExamples} disabled={saving}>
                 Exemples malgaches
               </Button>
             </div>
@@ -160,10 +200,12 @@ export default function Personalisation() {
                             value={toHexColor(color)}
                             onChange={(e) => setStatusColor(statusId, e.target.value)}
                             className="h-10 px-2 py-1"
+                            disabled={saving}
                           />
                           <Select
                             value={presetValue}
                             onChange={(e) => setStatusColor(statusId, e.target.value)}
+                            disabled={saving}
                           >
                             <option value="">Personnalisé</option>
                           {COLOR_OPTIONS.map((opt) => (
@@ -181,6 +223,7 @@ export default function Personalisation() {
                           value={label}
                           onChange={(e) => setStatusLabel(statusId, e.target.value)}
                           placeholder="Ex: Vaovao / Efa manao / Vita"
+                          disabled={saving}
                         />
                       </div>
                     </div>

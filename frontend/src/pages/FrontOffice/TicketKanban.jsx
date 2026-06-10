@@ -5,11 +5,12 @@ import { CreateTicketForm } from './CreateTicket'
 import {
   fetchKanbanTickets,
   formatStatusLabel,
-  getKanbanColumns,
+  getKanbanColumnsSync,
   getMoveDialogConfig,
   getTicketActors,
   getTicketDetails,
   getTicketStatusId,
+  getKanbanCustomization,
   updateTicketStatus,
 } from '../../services/frontOfficeKanbanTicketService'
 
@@ -56,11 +57,25 @@ function formatActorsList(list) {
     .join(', ')
 }
 
+const DEFAULT_CUSTOMIZATION = {
+  colorsByStatus: {
+    1: 'blue',
+    2: 'amber',
+    6: 'green',
+  },
+  labelsByStatus: {
+    1: 'Nouveau',
+    2: 'En cours (Attribué)',
+    6: 'Terminé (Clos)',
+  },
+}
+
 export default function TicketKanban() {
   const [tickets, setTickets] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [customizationRevision, setCustomizationRevision] = useState(0)
+  const [customization, setCustomization] = useState(DEFAULT_CUSTOMIZATION)
+  const [customizationLoading, setCustomizationLoading] = useState(true)
 
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [detailsTicket, setDetailsTicket] = useState(null)
@@ -91,21 +106,29 @@ export default function TicketKanban() {
     }
   }, [])
 
-  useEffect(() => {
-    loadTickets()
-  }, [loadTickets])
-
-  useEffect(() => {
-    const onChanged = () => setCustomizationRevision((v) => v + 1)
-    window.addEventListener('kanban-customization-changed', onChanged)
-    window.addEventListener('storage', onChanged)
-    return () => {
-      window.removeEventListener('kanban-customization-changed', onChanged)
-      window.removeEventListener('storage', onChanged)
+  const loadCustomization = useCallback(async () => {
+    try {
+      const cust = await getKanbanCustomization()
+      setCustomization(cust)
+    } finally {
+      setCustomizationLoading(false)
     }
   }, [])
 
-  const columns = useMemo(() => getKanbanColumns(), [customizationRevision])
+  useEffect(() => {
+    loadTickets()
+    loadCustomization()
+  }, [loadTickets, loadCustomization])
+
+  useEffect(() => {
+    const onChanged = () => loadCustomization()
+    window.addEventListener('kanban-customization-changed', onChanged)
+    return () => {
+      window.removeEventListener('kanban-customization-changed', onChanged)
+    }
+  }, [loadCustomization])
+
+  const columns = useMemo(() => getKanbanColumnsSync(customization), [customization])
 
   const ticketsById = useMemo(() => {
     const map = new Map()
@@ -233,12 +256,12 @@ export default function TicketKanban() {
   }, [openDetails])
 
   const detailsTicketId = detailsTicket?.id
-  const detailsStatus = detailsTicket ? formatStatusLabel(detailsTicket.status) : ''
+  const detailsStatus = detailsTicket ? formatStatusLabel(detailsTicket.status, customization) : ''
 
   const pendingTicket = pendingMove ? ticketsById.get(Number(pendingMove.ticketId)) : null
   const moveDialog = pendingMove ? getMoveDialogConfig({ fromStatus: pendingMove.fromStatus, toStatus: pendingMove.toStatus }) : null
 
-  if (loading) return <Loading message="Chargement des tickets…" />
+  if (loading || customizationLoading) return <Loading message="Chargement des tickets…" />
   if (error) return <Error message={error} onRetry={loadTickets} />
 
   return (
@@ -350,7 +373,7 @@ export default function TicketKanban() {
                 #{pendingTicket.id} — {pendingTicket.name || 'Sans titre'}
               </div>
               <div className="text-xs text-gray-500 mt-1">
-                {formatStatusLabel(pendingMove?.fromStatus)} → {formatStatusLabel(pendingMove?.toStatus)}
+                {formatStatusLabel(pendingMove?.fromStatus, customization)} → {formatStatusLabel(pendingMove?.toStatus, customization)}
               </div>
             </div>
           )}

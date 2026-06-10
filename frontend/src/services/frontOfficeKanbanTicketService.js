@@ -1,4 +1,5 @@
 import api, { legacy, Legacy } from './api'
+import backendApi from './backend-api'
 
 function extractItems(data) {
   if (Array.isArray(data)) return data
@@ -170,23 +171,32 @@ function normalizeKanbanCustomization(input) {
   return { colorsByStatus, labelsByStatus }
 }
 
-export function getKanbanCustomization() {
-  if (typeof window === 'undefined') return { ...DEFAULT_KANBAN_CUSTOMIZATION }
-  const raw = safeParseJson(window.localStorage?.getItem(KANBAN_CUSTOMIZATION_STORAGE_KEY))
-  return normalizeKanbanCustomization(raw)
+export async function getKanbanCustomization() {
+  try {
+    const response = await backendApi.get('/api/kanban-customization')
+    return normalizeKanbanCustomization(response.data)
+  } catch {
+    return { ...DEFAULT_KANBAN_CUSTOMIZATION }
+  }
 }
 
-export function setKanbanCustomization(nextCustomization) {
-  if (typeof window === 'undefined') return
+export async function setKanbanCustomization(nextCustomization) {
   const normalized = normalizeKanbanCustomization(nextCustomization)
-  window.localStorage?.setItem(KANBAN_CUSTOMIZATION_STORAGE_KEY, JSON.stringify(normalized))
-  window.dispatchEvent(new Event('kanban-customization-changed'))
+  try {
+    await backendApi.put('/api/kanban-customization', normalized)
+    window.dispatchEvent(new Event('kanban-customization-changed'))
+  } catch (error) {
+    console.error('Failed to save customization:', error)
+  }
 }
 
-export function resetKanbanCustomization() {
-  if (typeof window === 'undefined') return
-  window.localStorage?.removeItem(KANBAN_CUSTOMIZATION_STORAGE_KEY)
-  window.dispatchEvent(new Event('kanban-customization-changed'))
+export async function resetKanbanCustomization() {
+  try {
+    await backendApi.delete('/api/kanban-customization')
+    window.dispatchEvent(new Event('kanban-customization-changed'))
+  } catch (error) {
+    console.error('Failed to reset customization:', error)
+  }
 }
 
 export const KANBAN_COLUMNS = [
@@ -195,12 +205,26 @@ export const KANBAN_COLUMNS = [
   { id: KANBAN_TICKET_STATUSES.CLOSED,      title: 'Terminé (Clos)',      color: 'green', icon: '✅' },
 ]
 
-export function getKanbanColumns() {
-  const customization = getKanbanCustomization()
+export async function getKanbanColumns() {
+  const customization = await getKanbanCustomization()
   return KANBAN_COLUMNS.map((col) => {
     const statusId = Number(col?.id)
     const customColor = customization?.colorsByStatus?.[statusId]
     const customLabel = customization?.labelsByStatus?.[statusId]
+    return {
+      ...col,
+      color: customColor || col.color,
+      title: customLabel || col.title,
+    }
+  })
+}
+
+export function getKanbanColumnsSync(customization) {
+  const cust = customization || { ...DEFAULT_KANBAN_CUSTOMIZATION }
+  return KANBAN_COLUMNS.map((col) => {
+    const statusId = Number(col?.id)
+    const customColor = cust?.colorsByStatus?.[statusId]
+    const customLabel = cust?.labelsByStatus?.[statusId]
     return {
       ...col,
       color: customColor || col.color,
@@ -224,9 +248,8 @@ export function getTicketStatusId(ticket) {
   return normalizeTicketStatus(ticket?.status)
 }
 
-export function formatStatusLabel(statusValue) {
+export function formatStatusLabel(statusValue, customization = null) {
   const status = normalizeTicketStatus(statusValue)
-  const customization = getKanbanCustomization()
   const custom = customization?.labelsByStatus?.[status]
   if (custom) return custom
   if (status === 1) return 'Nouveau'
