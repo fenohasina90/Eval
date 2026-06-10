@@ -44,8 +44,66 @@ const COLOR_MAP = {
 
 const DEFAULT_COLORS = COLOR_MAP.gray
 
-function getColors(colorName) {
-  return COLOR_MAP[colorName] || DEFAULT_COLORS
+const PRESET_HEX = {
+  blue: '#3b82f6',
+  amber: '#f59e0b',
+  green: '#10b981',
+  red: '#ef4444',
+  purple: '#a855f7',
+  gray: '#9ca3af',
+  indigo: '#6366f1',
+  pink: '#ec4899',
+  orange: '#f97316',
+}
+
+const HEX_TO_PRESET = new Map(Object.entries(PRESET_HEX).map(([k, v]) => [v.toLowerCase(), k]))
+
+function isHexColor(value) {
+  const s = value != null ? String(value) : ''
+  return /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(s)
+}
+
+function normalizeHex(hex) {
+  const raw = String(hex).trim().toLowerCase()
+  if (/^#[0-9a-f]{3}$/.test(raw)) {
+    return `#${raw[1]}${raw[1]}${raw[2]}${raw[2]}${raw[3]}${raw[3]}`
+  }
+  return raw
+}
+
+function hexToRgb(hex) {
+  const h = normalizeHex(hex).slice(1)
+  const r = parseInt(h.slice(0, 2), 16)
+  const g = parseInt(h.slice(2, 4), 16)
+  const b = parseInt(h.slice(4, 6), 16)
+  return { r, g, b }
+}
+
+function rgba(hex, alpha) {
+  const { r, g, b } = hexToRgb(hex)
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
+
+function getColors(colorValue) {
+  const raw = colorValue != null ? String(colorValue).trim() : ''
+  if (isHexColor(raw)) {
+    const hex = normalizeHex(raw)
+    const preset = HEX_TO_PRESET.get(hex)
+    if (preset) return { ...COLOR_MAP[preset], isCustom: false }
+    return {
+      ...DEFAULT_COLORS,
+      isCustom: true,
+      style: {
+        borderColor: rgba(hex, 0.35),
+        bgColor: rgba(hex, 0.10),
+        dropBgColor: rgba(hex, 0.18),
+        accentColor: hex,
+        ringColor: rgba(hex, 0.35),
+      },
+    }
+  }
+
+  return { ...(COLOR_MAP[raw] || DEFAULT_COLORS), isCustom: false }
 }
 
 /* ─── Composant Kanban principal ─── */
@@ -185,10 +243,15 @@ function KanbanColumn({
         rounded-2xl border transition-all duration-200 ease-out
         ${colors.border}
         ${isDropTarget
-          ? `${colors.dropBg} ring-2 ring-offset-1 ring-${column.color || 'gray'}-300 scale-[1.01]`
+          ? `${colors.dropBg} ring-2 ring-offset-1 ring-gray-300 scale-[1.01]`
           : `${colors.bg}`
         }
       `}
+      style={colors.isCustom ? {
+        borderColor: colors.style?.borderColor,
+        backgroundColor: isDropTarget ? colors.style?.dropBgColor : colors.style?.bgColor,
+        ['--tw-ring-color']: colors.style?.ringColor,
+      } : undefined}
       onDragOver={(e) => onDragOver(e, column.id)}
       onDragLeave={(e) => onDragLeave(e, column.id)}
       onDrop={(e) => onDrop(e, column.id)}
@@ -197,7 +260,10 @@ function KanbanColumn({
       {/* En-tête de colonne */}
       <div className="flex items-center gap-3 px-4 py-3">
         {/* Indicateur couleur */}
-        <div className={`w-2.5 h-2.5 rounded-full ${colors.accent} ring-2 ring-white shadow-sm`} />
+        <div
+          className={`w-2.5 h-2.5 rounded-full ${colors.isCustom ? '' : colors.accent} ring-2 ring-white shadow-sm`}
+          style={colors.isCustom ? { backgroundColor: colors.style?.accentColor } : undefined}
+        />
 
         {/* Icône optionnelle */}
         {column.icon && (
@@ -225,18 +291,24 @@ function KanbanColumn({
       </div>
 
       {/* Séparateur */}
-      <div className={`mx-3 border-t ${colors.border} opacity-60`} />
+      <div
+        className={`mx-3 border-t ${colors.border} opacity-60`}
+        style={colors.isCustom ? { borderColor: colors.style?.borderColor } : undefined}
+      />
 
       {/* Zone des cartes */}
       <div className="flex flex-col gap-2.5 p-3 min-h-[120px] flex-1">
         {items.length === 0 ? (
-          <div className={`
+          <div
+            className={`
             flex items-center justify-center h-full min-h-[80px]
             text-sm text-gray-400 italic
             border-2 border-dashed rounded-xl
             ${isDropTarget ? `${colors.border}` : 'border-gray-200'}
             transition-colors duration-200
-          `}>
+          `}
+            style={colors.isCustom && isDropTarget ? { borderColor: colors.style?.borderColor } : undefined}
+          >
             {emptyMessage}
           </div>
         ) : (
@@ -265,12 +337,15 @@ function KanbanColumn({
                 id={`kanban-card-${itemId}`}
               >
                 {/* Barre latérale accent */}
-                <div className={`
+                <div
+                  className={`
                   absolute left-0 top-3 bottom-3 w-1 rounded-full
-                  ${colors.accent}
+                  ${colors.isCustom ? '' : colors.accent}
                   opacity-0 group-hover:opacity-100
                   transition-opacity duration-200
-                `} />
+                `}
+                  style={colors.isCustom ? { backgroundColor: colors.style?.accentColor } : undefined}
+                />
 
                 {/* Contenu de la carte */}
                 <div className="p-3.5">
@@ -303,13 +378,16 @@ function KanbanColumn({
 
         {/* Zone de drop supplémentaire en bas de colonne */}
         {isDropTarget && items.length > 0 && (
-          <div className={`
+          <div
+            className={`
             h-14 rounded-xl border-2 border-dashed
             ${colors.border}
             flex items-center justify-center
             text-xs ${colors.text} font-medium
             animate-pulse
-          `}>
+          `}
+            style={colors.isCustom ? { borderColor: colors.style?.borderColor } : undefined}
+          >
             Déposer ici
           </div>
         )}

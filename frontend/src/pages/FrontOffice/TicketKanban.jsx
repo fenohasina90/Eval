@@ -3,9 +3,9 @@ import { Button, Container, Error, H1, Input, Kanban, Loading, Textarea } from '
 import Modal from '../../components/Modal'
 import { CreateTicketForm } from './CreateTicket'
 import {
-  KANBAN_COLUMNS,
   fetchKanbanTickets,
   formatStatusLabel,
+  getKanbanColumns,
   getMoveDialogConfig,
   getTicketActors,
   getTicketDetails,
@@ -47,8 +47,10 @@ function formatActorsList(list) {
   if (items.length === 0) return '—'
   return items
     .map((u) => {
-      if (u?.name) return `${u.name} (#${u.id || '?'})`
-      if (u?.id) return `Utilisateur #${u.id}`
+      // kind='group' → préfixe 👥, kind='user' ou absent → préfixe 👤
+      const prefix = u?.kind === 'group' ? '👥 ' : '👤 '
+      if (u?.name) return `${prefix}${u.name} (#${u.id || '?'})`
+      if (u?.id)   return `${prefix}#${u.id}`
       return '—'
     })
     .join(', ')
@@ -58,6 +60,7 @@ export default function TicketKanban() {
   const [tickets, setTickets] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [customizationRevision, setCustomizationRevision] = useState(0)
 
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [detailsTicket, setDetailsTicket] = useState(null)
@@ -92,6 +95,18 @@ export default function TicketKanban() {
     loadTickets()
   }, [loadTickets])
 
+  useEffect(() => {
+    const onChanged = () => setCustomizationRevision((v) => v + 1)
+    window.addEventListener('kanban-customization-changed', onChanged)
+    window.addEventListener('storage', onChanged)
+    return () => {
+      window.removeEventListener('kanban-customization-changed', onChanged)
+      window.removeEventListener('storage', onChanged)
+    }
+  }, [])
+
+  const columns = useMemo(() => getKanbanColumns(), [customizationRevision])
+
   const ticketsById = useMemo(() => {
     const map = new Map()
     tickets.forEach((t) => {
@@ -103,6 +118,10 @@ export default function TicketKanban() {
   const openDetails = useCallback(async (ticket) => {
     const ticketId = ticket?.id
     if (!ticketId) return
+
+    // #region debug-point C:ui-open-details
+    // fetch('http://127.0.0.1:7777/event', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId: 'ticket-actors-missing', runId: 'post', hypothesisId: 'C', location: 'TicketKanban.jsx:openDetails', msg: '[DEBUG] UI openDetails', data: { ticketId: Number(ticketId) }, ts: Date.now() }) }).catch(() => { })
+    // #endregion
 
     setDetailsOpen(true)
     setDetailsError('')
@@ -129,6 +148,10 @@ export default function TicketKanban() {
       if (actorsResult.status === 'rejected') {
         setDetailsActorsError(actorsResult.reason?.message || 'Erreur lors du chargement des acteurs.')
       }
+
+      // #region debug-point C:ui-open-details-result
+      // fetch('http://127.0.0.1:7777/event', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId: 'ticket-actors-missing', runId: 'post', hypothesisId: 'C', location: 'TicketKanban.jsx:openDetails', msg: '[DEBUG] UI openDetails resolved', data: { ticketId: Number(ticketId), detailsStatus: detailsResult.status, actorsStatus: actorsResult.status, actorsCounts: actorsResult.status === 'fulfilled' ? { requesters: actorsResult.value?.requesters?.length || 0, assignees: actorsResult.value?.assignees?.length || 0, observers: actorsResult.value?.observers?.length || 0 } : null }, ts: Date.now() }) }).catch(() => { })
+      // #endregion
     } catch (err) {
       setDetailsError(err?.message || 'Erreur lors du chargement des détails.')
     } finally {
@@ -228,7 +251,7 @@ export default function TicketKanban() {
       </div>
 
       <Kanban
-        columns={KANBAN_COLUMNS}
+        columns={columns}
         items={tickets}
         getColumnId={(t) => getTicketStatusId(t)}
         onItemMove={handleItemMove}

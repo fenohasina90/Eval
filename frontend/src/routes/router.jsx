@@ -10,6 +10,7 @@ import Exemple from '../pages/Exemple'
 import Ticket from '../pages/Ticket/Ticket'
 import Reset from '../pages/Reset/reset'
 import ImportData from '../pages/Import/ImportData'
+import Personalisation from '../pages/Personalisation/Personalisation'
 import FrontOfficeLayout from '../layouts/FrontOfficeLayout'
 import ElementList from '../pages/FrontOffice/ElementList'
 import CreateTicket from '../pages/FrontOffice/CreateTicket'
@@ -30,6 +31,7 @@ const router = createBrowserRouter([
       { path: 'tickets', element: <Ticket /> },
       { path: 'reset', element: <Reset /> },
       { path: 'import', element: <ImportData /> },
+      { path: 'personalisation', element: <Personalisation /> },
     ],
   },
   {

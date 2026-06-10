@@ -16,6 +16,7 @@ const navItems = [
   { path: '/tickets', label: 'Ticket', icon: TicketIcon },
   { path: '/reset', label: 'Reset', icon: ResetIcon },
   { path: '/import', label: 'Import de données', icon: ImportIcon },
+  { path: '/personalisation', label: 'Personnalisation', icon: PaletteIcon },
 ]
 
 export default function SidebarLayout() {
@@ -198,6 +199,20 @@ function LogoutIcon({ className }) {
         strokeWidth={1.5}
         d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l3 3m0 0l-3 3m3-3H2.25"
       />
+    </svg>
+  )
+}
+
+function PaletteIcon({ className }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.5}
+        d="M12 3c-5.523 0-10 3.94-10 8.8 0 3.208 2.23 6.02 5.49 7.486 1.056.475 2.01-.37 1.905-1.49l-.165-1.75a1.8 1.8 0 0 1 1.79-1.97h2.512a4.8 4.8 0 0 0 0-9.6H12z"
+      />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7.5 10.2h.01M10.5 7.8h.01M13.5 7.8h.01M16.5 10.2h.01" />
     </svg>
   )
 }

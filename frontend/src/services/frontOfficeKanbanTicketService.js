@@ -8,8 +8,19 @@ function extractItems(data) {
   return []
 }
 
+function normalizeLegacyList(data) {
+  // GLPI Legacy retourne parfois un objet indexé { "0": {...}, "1": {...} }
+  // au lieu d'un tableau
+  if (Array.isArray(data)) return data
+  if (data && typeof data === 'object' && !Array.isArray(data)) {
+    const values = Object.values(data)
+    if (values.length > 0 && typeof values[0] === 'object') return values
+  }
+  return []
+}
+
 function isDeletedOrTemplate(item) {
-  const isDeleted = item?.is_deleted === true || item?.is_deleted === 1 || item?.is_deleted === '1'
+  const isDeleted  = item?.is_deleted  === true || item?.is_deleted  === 1 || item?.is_deleted  === '1'
   const isTemplate = item?.is_template === true || item?.is_template === 1 || item?.is_template === '1'
   return isDeleted || isTemplate
 }
@@ -24,17 +35,179 @@ function compactObject(obj) {
   return out
 }
 
+// ── Résolution ID → nom d'un User ─────────────────────────────────
+// Cache en mémoire pour éviter de refetch le même user plusieurs fois
+const userNameCache = new Map()
+
+async function resolveUserName(userId) {
+  const id = Number(userId)
+  if (!id || Number.isNaN(id)) return null
+
+  if (userNameCache.has(id)) return userNameCache.get(id)
+
+  try {
+    const response = await Legacy.get(`/User/${id}`)
+    const data = response?.data
+    // GLPI retourne : { id, name, realname, firstname, ... }
+    const name = data?.realname && data?.firstname
+      ? `${data.firstname} ${data.realname}`
+      : data?.realname || data?.firstname || data?.name || null
+    const result = { id, name: name ? String(name) : `Utilisateur #${id}` }
+    userNameCache.set(id, result)
+    return result
+  } catch {
+    const fallback = { id, name: `Utilisateur #${id}` }
+    userNameCache.set(id, fallback)
+    return fallback
+  }
+}
+
+// ── Résolution ID → nom d'un Group ────────────────────────────────
+const groupNameCache = new Map()
+
+async function resolveGroupName(groupId) {
+  const id = Number(groupId)
+  if (!id || Number.isNaN(id)) return null
+
+  if (groupNameCache.has(id)) return groupNameCache.get(id)
+
+  try {
+    const response = await Legacy.get(`/Group/${id}`)
+    const data = response?.data
+    const name = data?.completename || data?.name || null
+    const result = { id, name: name ? String(name) : `Groupe #${id}`, kind: 'group' }
+    groupNameCache.set(id, result)
+    return result
+  } catch {
+    const fallback = { id, name: `Groupe #${id}`, kind: 'group' }
+    groupNameCache.set(id, fallback)
+    return fallback
+  }
+}
+
+// ── Extraction de l'ID depuis une valeur GLPI (entier ou objet) ───
+function extractId(value) {
+  if (!value && value !== 0) return null
+  if (typeof value === 'object' && value !== null) {
+    const id = Number(value?.id)
+    return id && !Number.isNaN(id) ? id : null
+  }
+  const id = Number(value)
+  return id && !Number.isNaN(id) ? id : null
+}
+
 export const KANBAN_TICKET_STATUSES = {
-  NEW: 1,
+  NEW:         1,
   IN_PROGRESS: 2,
-  CLOSED: 6,
+  CLOSED:      6,
+}
+
+const KANBAN_CUSTOMIZATION_STORAGE_KEY = 'glpi.frontoffice.kanban.customization.v1'
+
+const DEFAULT_KANBAN_CUSTOMIZATION = {
+  colorsByStatus: {
+    [KANBAN_TICKET_STATUSES.NEW]: 'blue',
+    [KANBAN_TICKET_STATUSES.IN_PROGRESS]: 'amber',
+    [KANBAN_TICKET_STATUSES.CLOSED]: 'green',
+  },
+  labelsByStatus: {
+    [KANBAN_TICKET_STATUSES.NEW]: 'Nouveau',
+    [KANBAN_TICKET_STATUSES.IN_PROGRESS]: 'En cours (Attribué)',
+    [KANBAN_TICKET_STATUSES.CLOSED]: 'Terminé (Clos)',
+  },
+}
+
+const ALLOWED_KANBAN_COLORS = new Set([
+  'blue',
+  'green',
+  'amber',
+  'red',
+  'purple',
+  'gray',
+  'indigo',
+  'pink',
+  'orange',
+])
+
+function isHexColor(value) {
+  const s = value != null ? String(value) : ''
+  return /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(s)
+}
+
+function safeParseJson(value) {
+  try {
+    if (value == null) return null
+    return JSON.parse(String(value))
+  } catch {
+    return null
+  }
+}
+
+function normalizeKanbanCustomization(input) {
+  const src = input && typeof input === 'object' ? input : {}
+  const rawColors = src.colorsByStatus && typeof src.colorsByStatus === 'object' ? src.colorsByStatus : {}
+  const rawLabels = src.labelsByStatus && typeof src.labelsByStatus === 'object' ? src.labelsByStatus : {}
+
+  const colorsByStatus = { ...DEFAULT_KANBAN_CUSTOMIZATION.colorsByStatus }
+  Object.entries(rawColors).forEach(([k, v]) => {
+    const statusId = Number(k)
+    const colorValue = v != null ? String(v).trim() : ''
+    if (!statusId || Number.isNaN(statusId)) return
+    if (ALLOWED_KANBAN_COLORS.has(colorValue) || isHexColor(colorValue)) {
+      colorsByStatus[statusId] = colorValue
+    }
+  })
+
+  const labelsByStatus = { ...DEFAULT_KANBAN_CUSTOMIZATION.labelsByStatus }
+  Object.entries(rawLabels).forEach(([k, v]) => {
+    const statusId = Number(k)
+    if (!statusId || Number.isNaN(statusId)) return
+    const label = v != null ? String(v).trim() : ''
+    if (!label) return
+    labelsByStatus[statusId] = label
+  })
+
+  return { colorsByStatus, labelsByStatus }
+}
+
+export function getKanbanCustomization() {
+  if (typeof window === 'undefined') return { ...DEFAULT_KANBAN_CUSTOMIZATION }
+  const raw = safeParseJson(window.localStorage?.getItem(KANBAN_CUSTOMIZATION_STORAGE_KEY))
+  return normalizeKanbanCustomization(raw)
+}
+
+export function setKanbanCustomization(nextCustomization) {
+  if (typeof window === 'undefined') return
+  const normalized = normalizeKanbanCustomization(nextCustomization)
+  window.localStorage?.setItem(KANBAN_CUSTOMIZATION_STORAGE_KEY, JSON.stringify(normalized))
+  window.dispatchEvent(new Event('kanban-customization-changed'))
+}
+
+export function resetKanbanCustomization() {
+  if (typeof window === 'undefined') return
+  window.localStorage?.removeItem(KANBAN_CUSTOMIZATION_STORAGE_KEY)
+  window.dispatchEvent(new Event('kanban-customization-changed'))
 }
 
 export const KANBAN_COLUMNS = [
-  { id: KANBAN_TICKET_STATUSES.NEW, title: 'Nouveau', color: 'blue', icon: '🆕' },
+  { id: KANBAN_TICKET_STATUSES.NEW,         title: 'Nouveau',              color: 'blue',  icon: '🆕' },
   { id: KANBAN_TICKET_STATUSES.IN_PROGRESS, title: 'En cours (Attribué)', color: 'amber', icon: '⚡' },
-  { id: KANBAN_TICKET_STATUSES.CLOSED, title: 'Terminé (Clos)', color: 'green', icon: '✅' },
+  { id: KANBAN_TICKET_STATUSES.CLOSED,      title: 'Terminé (Clos)',      color: 'green', icon: '✅' },
 ]
+
+export function getKanbanColumns() {
+  const customization = getKanbanCustomization()
+  return KANBAN_COLUMNS.map((col) => {
+    const statusId = Number(col?.id)
+    const customColor = customization?.colorsByStatus?.[statusId]
+    const customLabel = customization?.labelsByStatus?.[statusId]
+    return {
+      ...col,
+      color: customColor || col.color,
+      title: customLabel || col.title,
+    }
+  })
+}
 
 export function normalizeTicketStatus(value) {
   let n
@@ -53,26 +226,29 @@ export function getTicketStatusId(ticket) {
 
 export function formatStatusLabel(statusValue) {
   const status = normalizeTicketStatus(statusValue)
+  const customization = getKanbanCustomization()
+  const custom = customization?.labelsByStatus?.[status]
+  if (custom) return custom
   if (status === 1) return 'Nouveau'
   if (status === 2) return 'En cours (Attribué)'
-  if (status === 6) return 'Clos'
   if (status === 3) return 'Planifié'
   if (status === 4) return 'En attente'
   if (status === 5) return 'Résolu'
+  if (status === 6) return 'Clos'
   return 'Inconnu'
 }
 
 export function getMoveDialogConfig({ fromStatus, toStatus }) {
   const from = Number(fromStatus)
-  const to = Number(toStatus)
+  const to   = Number(toStatus)
   if (Number.isNaN(from) || Number.isNaN(to) || from === to) return null
 
   if (to === KANBAN_TICKET_STATUSES.IN_PROGRESS) {
     return {
       title: 'Passer en cours',
       fields: [
-        { key: 'assigneeId', label: 'ID technicien (optionnel)', type: 'number', required: false },
-        { key: 'comment', label: 'Commentaire (optionnel)', type: 'textarea', required: false },
+        { key: 'assigneeId', label: 'ID technicien (optionnel)', type: 'number',   required: false },
+        { key: 'comment',    label: 'Commentaire (optionnel)',   type: 'textarea', required: false },
       ],
     }
   }
@@ -82,7 +258,7 @@ export function getMoveDialogConfig({ fromStatus, toStatus }) {
       title: 'Clôturer le ticket',
       fields: [
         { key: 'solution', label: 'Solution / note de clôture (optionnel)', type: 'textarea', required: false },
-        { key: 'comment', label: 'Commentaire (optionnel)', type: 'textarea', required: false },
+        { key: 'comment',  label: 'Commentaire (optionnel)',                type: 'textarea', required: false },
       ],
     }
   }
@@ -92,12 +268,12 @@ export function getMoveDialogConfig({ fromStatus, toStatus }) {
 
 async function fetchAll(path) {
   try {
-    const response = await api.get(path, { params: { limit: 999999 } })
+    const response = await api.get(path, { params: { range: '0-999999' } })
     return extractItems(response?.data) || []
   } catch (err) {
     if (err?.response?.status === 404) {
       const legacyPath = path.replace(/^\/Assets/, '').replace(/^\/Assistance/, '')
-      const response = await legacy.get(legacyPath, { params: { limit: 999999 } })
+      const response = await legacy.get(legacyPath, { params: { range: '0-999999' } })
       return extractItems(response?.data) || []
     }
     throw err
@@ -106,95 +282,106 @@ async function fetchAll(path) {
 
 export async function fetchKanbanTickets() {
   const tickets = await fetchAll('/Assistance/Ticket')
-  const allowed = new Set([KANBAN_TICKET_STATUSES.NEW, KANBAN_TICKET_STATUSES.IN_PROGRESS, KANBAN_TICKET_STATUSES.CLOSED])
-  return (tickets || []).filter((t) => !isDeletedOrTemplate(t) && allowed.has(getTicketStatusId(t)))
+  const allowed = new Set([
+    KANBAN_TICKET_STATUSES.NEW,
+    KANBAN_TICKET_STATUSES.IN_PROGRESS,
+    KANBAN_TICKET_STATUSES.CLOSED,
+  ])
+  return (tickets || []).filter(
+    (t) => !isDeletedOrTemplate(t) && allowed.has(getTicketStatusId(t))
+  )
 }
 
 export async function getTicketDetails(ticketId) {
-  const response = await Legacy.get(`/Ticket/${ticketId}`, { expand_dropdowns: true })
+  const response = await Legacy.get(`/Ticket/${ticketId}`)
   return response?.data
 }
 
-function normalizeUserRef(userValue) {
-  if (!userValue) return null
-  if (typeof userValue === 'object') {
-    const id = userValue.id != null ? Number(userValue.id) : null
-    const name = userValue.name || userValue.completename || userValue.realname || userValue.firstname
-    return { id: id && !Number.isNaN(id) ? id : null, name: name ? String(name) : null }
-  }
-  const id = Number(userValue)
-  if (!id || Number.isNaN(id)) return null
-  return { id, name: null }
-}
-
-function normalizeLegacyListResponse(data) {
-  const extracted = extractItems(data)
-  if (extracted.length > 0) return extracted
-  if (data && typeof data === 'object') {
-    const values = Object.values(data)
-    if (values.every((v) => v && typeof v === 'object')) return values
-  }
-  return []
-}
-
-async function fetchTicketUserRows(ticketId) {
-  const id = Number(ticketId)
-  if (!id || Number.isNaN(id)) return []
-
-  const attempts = [
-    () => Legacy.get(`/Ticket/${id}/Ticket_User`, { expand_dropdowns: true, range: '0-9999' }),
-    () => Legacy.get(`/Ticket/${id}/Ticket_User/`, { expand_dropdowns: true, range: '0-9999' }),
-    () => Legacy.get('/Ticket_User', { expand_dropdowns: true, range: '0-9999', tickets_id: id }),
-    () => Legacy.get('/Ticket_User', { expand_dropdowns: true, range: '0-9999' }),
-  ]
-
-  for (let i = 0; i < attempts.length; i++) {
-    try {
-      const response = await attempts[i]()
-      const rows = normalizeLegacyListResponse(response?.data)
-      if (rows.length === 0) continue
-      const filtered = rows.filter((r) => Number(r?.tickets_id) === id)
-      if (filtered.length > 0) return filtered
-      if (i < 3) continue
-      return []
-    } catch {
-      continue
-    }
-  }
-
-  return []
-}
-
+/**
+ * Récupère les acteurs d'un ticket (demandeurs, assignés, observateurs).
+ *
+ * STRATÉGIE :
+ * 1. GET /Ticket/{id}/Ticket_User  → liste des lignes glpi_tickets_users
+ *    Chaque ligne contient { users_id: <entier ou objet>, type: 1|2|3 }
+ * 2. GET /Ticket/{id}/Group_Ticket → liste des lignes glpi_groups_tickets
+ *    Chaque ligne contient { groups_id: <entier ou objet>, type: 1|2|3 }
+ * 3. Pour chaque ID trouvé, résoudre le nom via GET /User/{id} ou GET /Group/{id}
+ *    (avec cache mémoire pour éviter les doublons)
+ *
+ * On n'utilise PAS expand_dropdowns car le format retourné varie selon
+ * la version de GLPI et peut retourner un objet incomplet ou un entier.
+ * La résolution individuelle par ID est plus fiable.
+ */
 export async function getTicketActors(ticketId) {
-  const items = await fetchTicketUserRows(ticketId)
+  const id = Number(ticketId)
+  if (!id || Number.isNaN(id)) return { requesters: [], assignees: [], observers: [] }
 
+  // ── 1. Récupérer les lignes Ticket_User et Group_Ticket ──────────
+  const [userResponse, groupResponse] = await Promise.allSettled([
+    Legacy.get(`/Ticket/${id}/Ticket_User`, { range: '0-9999' }),
+    Legacy.get(`/Ticket/${id}/Group_Ticket`, { range: '0-9999' }),
+  ])
+
+  const userRows  = userResponse.status  === 'fulfilled'
+    ? normalizeLegacyList(userResponse.value?.data)
+    : []
+  const groupRows = groupResponse.status === 'fulfilled'
+    ? normalizeLegacyList(groupResponse.value?.data)
+    : []
+
+  // ── 2. Extraire les IDs et types ─────────────────────────────────
+  // { type: 1|2|3, userId: number }[]
+  const userEntries = userRows
+    .map((row) => ({ type: Number(row?.type), userId: extractId(row?.users_id) }))
+    .filter((e) => e.userId && [1, 2, 3].includes(e.type))
+
+  // { type: 1|2|3, groupId: number }[]
+  const groupEntries = groupRows
+    .map((row) => ({ type: Number(row?.type), groupId: extractId(row?.groups_id) }))
+    .filter((e) => e.groupId && [1, 2, 3].includes(e.type))
+
+  // ── 3. Résoudre les noms en parallèle ────────────────────────────
+  const [resolvedUsers, resolvedGroups] = await Promise.all([
+    Promise.all(
+      userEntries.map(async (e) => {
+        const user = await resolveUserName(e.userId)
+        return user ? { ...user, kind: 'user', type: e.type } : null
+      })
+    ),
+    Promise.all(
+      groupEntries.map(async (e) => {
+        const group = await resolveGroupName(e.groupId)
+        return group ? { ...group, kind: 'group', type: e.type } : null
+      })
+    ),
+  ])
+
+  // ── 4. Classer par type ──────────────────────────────────────────
   const requesters = []
-  const assignees = []
-  const observers = []
+  const assignees  = []
+  const observers  = []
 
-  items.forEach((row) => {
-    const type = Number(row?.type)
-    const user = normalizeUserRef(row?.users_id)
-    if (!user) return
-
-    if (type === 1) requesters.push(user)
-    if (type === 2) assignees.push(user)
-    if (type === 3) observers.push(user)
-  })
+  ;[...resolvedUsers, ...resolvedGroups]
+    .filter(Boolean)
+    .forEach((actor) => {
+      if (actor.type === 1) requesters.push(actor)
+      if (actor.type === 2) assignees.push(actor)
+      if (actor.type === 3) observers.push(actor)
+    })
 
   return { requesters, assignees, observers }
 }
 
 export async function updateTicketStatus(ticketId, toStatus, extra = {}) {
   const basePayload = compactObject({
-    id: Number(ticketId),
+    id:     Number(ticketId),
     status: Number(toStatus),
   })
 
   const extendedPayload = compactObject({
     ...basePayload,
-    solution: extra.solution,
-    comment: extra.comment,
+    solution:        extra.solution,
+    comment:         extra.comment,
     users_id_assign: extra.assigneeId ? Number(extra.assigneeId) : undefined,
   })
 
