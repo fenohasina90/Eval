@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Button, Container, Error, H1, Input, Kanban, Loading, Textarea } from '../../components'
 import Modal from '../../components/Modal'
+import TicketDetailsModal from '../../components/TicketDetailsModal'
 import { CreateTicketForm } from './CreateTicket'
 import {
   fetchKanbanTickets,
@@ -14,47 +15,44 @@ import {
   updateTicketStatus,
 } from '../../services/frontOfficeKanbanTicketService'
 
-function FieldRow({ label, value }) {
-  if (value === undefined || value === null || String(value).trim().length === 0) return null
-  return (
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-1 sm:gap-3 py-2 border-b border-gray-100 last:border-b-0">
-      <div className="text-xs font-semibold text-gray-500">{label}</div>
-      <div className="sm:col-span-2 text-sm text-gray-800 whitespace-pre-wrap">{value}</div>
-    </div>
-  )
-}
+function formatDate(dateStr) {
+  if (!dateStr) return '—'
 
-function formatTicketTypeLabel(typeValue) {
-  if (typeValue && typeof typeValue === 'object' && typeValue.name) return typeValue.name
-  const n = Number(typeValue)
-  if (n === 1) return 'Incident'
-  if (n === 2) return 'Demande'
-  return '—'
-}
+  // Handle date strings in different formats (ISO, GLPI format, etc.)
+  let date
+  if (typeof dateStr === 'string') {
+    // Try parsing as ISO string first
+    date = new Date(dateStr)
+    // If that fails, try GLPI's format (YYYY-MM-DD HH:mm:ss)
+    if (isNaN(date.getTime())) {
+      const [datePart, timePart] = dateStr.split(' ')
+      if (datePart) {
+        const [year, month, day] = datePart.split('-')
+        let hours = 0, minutes = 0, seconds = 0
+        if (timePart) {
+          const [h, m, s] = timePart.split(':')
+          hours = parseInt(h) || 0
+          minutes = parseInt(m) || 0
+          seconds = parseInt(s) || 0
+        }
+        if (year && month && day) {
+          date = new Date(year, month - 1, day, hours, minutes, seconds)
+        }
+      }
+    }
+  } else if (dateStr instanceof Date) {
+    date = dateStr
+  }
 
-function formatPriorityLabel(priorityValue) {
-  const n = Number(priorityValue)
-  if (n === 1) return 'Très basse'
-  if (n === 2) return 'Basse'
-  if (n === 3) return 'Moyenne'
-  if (n === 4) return 'Haute'
-  if (n === 5) return 'Très haute'
-  if (n === 6) return 'Majeure'
-  return '—'
-}
+  if (!date || isNaN(date.getTime())) return '—'
 
-function formatActorsList(list) {
-  const items = Array.isArray(list) ? list : []
-  if (items.length === 0) return '—'
-  return items
-    .map((u) => {
-      // kind='group' → préfixe 👥, kind='user' ou absent → préfixe 👤
-      const prefix = u?.kind === 'group' ? '👥 ' : '👤 '
-      if (u?.name) return `${prefix}${u.name} (#${u.id || '?'})`
-      if (u?.id)   return `${prefix}#${u.id}`
-      return '—'
-    })
-    .join(', ')
+  const day = String(date.getDate()).padStart(2, '0')
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const year = date.getFullYear()
+  const hours = String(date.getHours()).padStart(2, '0')
+  const minutes = String(date.getMinutes()).padStart(2, '0')
+
+  return `${day}/${month}/${year} ${hours}:${minutes}`
 }
 
 const DEFAULT_CUSTOMIZATION = {
@@ -310,55 +308,17 @@ export default function TicketKanban() {
         />
       </Modal>
 
-      <Modal
+      <TicketDetailsModal
         isOpen={detailsOpen}
         onClose={closeDetails}
-        title={detailsTicketId ? `Ticket #${detailsTicketId}` : 'Détails du ticket'}
-        className="max-w-3xl"
-      >
-        {detailsLoading && (
-          <div className="text-sm text-gray-500">Chargement des détails…</div>
-        )}
-        {detailsError && (
-          <div className="text-sm text-red-600">{detailsError}</div>
-        )}
-        {detailsActorsLoading && (
-          <div className="text-sm text-gray-500">Chargement des acteurs…</div>
-        )}
-        {detailsActorsError && (
-          <div className="text-sm text-red-600">{detailsActorsError}</div>
-        )}
-        {detailsTicket && (
-          <div className="space-y-4">
-            <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
-              <div className="text-sm font-semibold text-gray-900">
-                {detailsTicket.name || 'Sans titre'}
-              </div>
-              <div className="text-xs text-gray-500 mt-1">
-                Statut: {detailsStatus}
-              </div>
-            </div>
-
-            <div className="rounded-xl border border-gray-100 bg-white px-4">
-              <FieldRow label="ID" value={detailsTicket.id} />
-              <FieldRow label="Type" value={formatTicketTypeLabel(detailsTicket.type)} />
-              <FieldRow label="Priorité" value={formatPriorityLabel(detailsTicket.priority)} />
-              <FieldRow label="Date de création" value={detailsTicket.date_creation} />
-              <FieldRow label="Dernière modification" value={detailsTicket.date_mod} />
-              <FieldRow label="Demandeur" value={formatActorsList(detailsActors?.requesters)} />
-              <FieldRow label="Attribué à" value={formatActorsList(detailsActors?.assignees)} />
-              <FieldRow label="Observateurs" value={formatActorsList(detailsActors?.observers)} />
-            </div>
-
-            <div className="rounded-xl border border-gray-100 bg-white p-4">
-              <div className="text-xs font-semibold text-gray-500 mb-2">Description</div>
-              <div className="text-sm text-gray-800 whitespace-pre-wrap">
-                {detailsTicket.content || '—'}
-              </div>
-            </div>
-          </div>
-        )}
-      </Modal>
+        ticket={detailsTicket}
+        detailsLoading={detailsLoading}
+        detailsError={detailsError}
+        detailsActors={detailsActors}
+        detailsActorsLoading={detailsActorsLoading}
+        detailsActorsError={detailsActorsError}
+        customization={customization}
+      />
 
       <Modal
         isOpen={moveOpen}

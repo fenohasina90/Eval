@@ -5,23 +5,41 @@
  * et le contenu principal à droite.
  * Utilise react-router-dom <Outlet /> pour afficher les pages enfants.
  */
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { lockBackoffice } from '../services/backofficeAccess'
 
 const navItems = [
+  { path: '/exemple', label: 'Exemple', icon: ComponentIcon },
   { path: '/', label: 'Accueil', icon: HomeIcon },
   { path: '/dashboard', label: 'Dashboard', icon: DashboardIcon },
-  { path: '/exemple', label: 'Exemple', icon: ComponentIcon },
   { path: '/tickets', label: 'Ticket', icon: TicketIcon },
-  { path: '/reset', label: 'Reset', icon: ResetIcon },
-  { path: '/import', label: 'Import de données', icon: ImportIcon },
   { path: '/personalisation', label: 'Personnalisation', icon: PaletteIcon },
+  { path: '/import', label: 'Import de données', icon: ImportIcon },
 ]
 
 export default function SidebarLayout() {
   const [collapsed, setCollapsed] = useState(false)
+  const [isDark, setIsDark] = useState(() => {
+    const saved = localStorage.getItem('darkMode')
+    return saved ? JSON.parse(saved) : false
+  })
   const navigate = useNavigate()
+  
+  // Toggle dark mode
+  const toggleDarkMode = () => {
+    setIsDark(!isDark)
+  }
+  
+  // Apply dark mode to body
+  useEffect(() => {
+    localStorage.setItem('darkMode', JSON.stringify(isDark))
+    if (isDark) {
+      document.body.classList.add('dark')
+    } else {
+      document.body.classList.remove('dark')
+    }
+  }, [isDark])
 
   function handleLogout() {
     lockBackoffice()
@@ -29,28 +47,31 @@ export default function SidebarLayout() {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className={`flex h-screen ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>
       {/* Sidebar */}
       <aside
         className={`
-          flex flex-col bg-white border-r border-gray-200
-          transition-all duration-300 ease-in-out
+          flex flex-col transition-all duration-300 ease-in-out
           ${collapsed ? 'w-16' : 'w-60'}
+          ${isDark ? 'bg-gray-800 border-r border-gray-700' : 'bg-white border-r border-gray-200'}
         `}
       >
         {/* Logo / Header */}
-        <div className="flex items-center h-14 px-4 border-b border-gray-100">
+        <div className={`flex items-center h-14 px-4 border-b ${isDark ? 'border-gray-700' : 'border-gray-100'}`}>
           {!collapsed && (
-            <span className="text-lg font-semibold text-gray-900 truncate">
+            <span className={`text-lg font-semibold truncate ${isDark ? 'text-white' : 'text-gray-900'}`}>
               Mon App
             </span>
           )}
           <button
             onClick={() => setCollapsed(!collapsed)}
             className={`
-              p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100
-              transition-colors cursor-pointer
+              p-1.5 rounded-lg transition-colors cursor-pointer
               ${collapsed ? 'mx-auto' : 'ml-auto'}
+              ${isDark
+                ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-700'
+                : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+              }
             `}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -74,8 +95,11 @@ export default function SidebarLayout() {
                 flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium
                 transition-colors duration-150
                 ${isActive
-                  ? 'bg-gray-900 text-white'
-                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                  ? (isDark ? 'bg-gray-700 text-white' : 'bg-gray-900 text-white')
+                  : (isDark 
+                    ? 'text-gray-300 hover:bg-gray-700 hover:text-white'
+                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                  )
                 }
                 ${collapsed ? 'justify-center' : ''}
               `}
@@ -86,12 +110,17 @@ export default function SidebarLayout() {
           ))}
         </nav>
 
-        <div className="p-2 border-t border-gray-100">
+        <div className={`p-2 border-t ${isDark ? 'border-gray-700' : 'border-gray-100'}`}>
           <button
             onClick={handleLogout}
             className={`
               flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm font-medium
-              text-red-600 hover:bg-red-50 transition-colors duration-150
+              transition-colors duration-150
+              border border-red-200 hover:border-red-300
+              ${isDark 
+                ? 'text-red-400 hover:bg-red-900/30' 
+                : 'text-red-600 hover:bg-red-50'
+              }
               ${collapsed ? 'justify-center' : ''}
             `}
           >
@@ -104,9 +133,40 @@ export default function SidebarLayout() {
       {/* Main content */}
       <main className="flex-1 overflow-y-auto">
         {/* Top bar */}
-        <header className="sticky top-0 z-10 flex items-center h-14 px-6 bg-white/80 backdrop-blur border-b border-gray-200">
-          <div className="text-sm text-gray-500">
+        <header className={`sticky top-0 z-10 flex items-center justify-between h-14 px-6 backdrop-blur border-b ${isDark ? 'bg-gray-800/80 border-gray-700' : 'bg-white/80 border-gray-200'}`}>
+          <div className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-500'}`}>
             Bienvenue
+          </div>
+          <div className="flex items-center gap-2">
+            {/* Theme toggle */}
+            <button
+              onClick={toggleDarkMode}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors duration-150 border ${isDark 
+                ? 'text-gray-300 hover:text-white border-gray-600 hover:bg-gray-700' 
+                : 'text-gray-600 hover:text-gray-900 border-gray-200 hover:bg-gray-100'
+              }`}
+            >
+              {isDark ? (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                </svg>
+              )}
+            </button>
+            {/* Reset button */}
+            <button
+              onClick={() => navigate('/reset')}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors duration-150 border ${isDark 
+                ? 'text-red-400 hover:bg-red-900/30 border-red-800 hover:border-red-700' 
+                : 'text-red-600 hover:bg-red-50 border-red-200 hover:border-red-300'
+              }`}
+            >
+              <ResetIcon className="w-4 h-4" />
+              <span>Reset</span>
+            </button>
           </div>
         </header>
 

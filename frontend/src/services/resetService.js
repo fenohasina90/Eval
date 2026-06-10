@@ -28,6 +28,7 @@ const allAPI = [
     // SAV & Assistance
     { url: 'Ticket', path: '/Assistance/Ticket', ids: null },
     { url: 'Item_Ticket', path: '/Assistance/Item_Ticket', ids: null },
+    { url: 'Ticket_User', path: '/Ticket_User', ids: null },
 
     // Documents & Fichiers
     { url: 'Document', path: '/Document', ids: null },
