@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Alert, Badge, Button, Card, Input, Label, P, Table, Tbody, Td, Th, Thead, Tr } from '../../components'
+import { Alert, Badge, Button, Card, Checkbox, Input, Label, P, Table, Tbody, Td, Th, Thead, Tr } from '../../components'
 import { importAssetsFromRows, parseCsvText, REQUIRED_COLUMNS } from '../../services/importDataService'
 import { importTicketsFromRows, REQUIRED_TICKET_COLUMNS } from '../../services/importTicketCsvService'
 import { importTicketCostsFromRows, REQUIRED_TICKET_COST_COLUMNS } from '../../services/importTicketCostsCsvService'
@@ -95,6 +95,8 @@ export default function ImportData() {
   const [isZipImporting, setIsZipImporting] = useState(false)
   const [zipProgress, setZipProgress] = useState({ done: 0, total: 0 })
   const [zipResults, setZipResults] = useState([])
+
+  const [isZipRequired, setIsZipRequired] = useState(false)
 
   const hasAssetRows = assetRows.length > 0
   const hasTicketRows = ticketRows.length > 0
@@ -331,7 +333,9 @@ export default function ImportData() {
   const zipStats = useMemo(() => computeStats(zipResults), [zipResults])
   
   const isBusy = isAssetParsing || isTicketParsing || isCostParsing || isAssetImporting || isTicketImporting || isCostImporting || isZipImporting
-  const canSubmit = !isBusy && (hasAssetRows || hasTicketRows || hasCostRows || hasZipFile)
+  const canSubmit = !isBusy && 
+    (hasAssetRows || hasTicketRows || hasCostRows || hasZipFile) && 
+    (!isZipRequired || hasZipFile)
 
   return (
     <div className="space-y-6">
@@ -469,7 +473,18 @@ export default function ImportData() {
               )}
             </div>
 
+            <Checkbox
+              id="zip-required"
+              label="Rendre l'import du fichier ZIP obligatoire"
+              checked={isZipRequired}
+              onChange={(e) => setIsZipRequired(e.target.checked)}
+              disabled={isBusy}
+            />
+
             {zipError && <Alert variant="danger">{zipError}</Alert>}
+            {isZipRequired && !hasZipFile && (
+              <Alert variant="danger">Veuillez sélectionner un fichier ZIP pour continuer.</Alert>
+            )}
 
             {(isZipImporting || zipProgress.total > 0) && <ProgressBar progress={zipProgress} />}
           </div>
@@ -481,7 +496,11 @@ export default function ImportData() {
             Valider et importer
           </Button>
           {!canSubmit && !isBusy && (
-            <div className="text-sm text-gray-600">Sélectionnez au moins un fichier CSV valide.</div>
+            <div className="text-sm text-gray-600">
+              {isZipRequired && !hasZipFile 
+                ? "Veuillez sélectionner un fichier ZIP pour continuer." 
+                : "Sélectionnez au moins un fichier CSV valide."}
+            </div>
           )}
         </div>
       </form>
