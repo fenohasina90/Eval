@@ -36,6 +36,10 @@ public class TicketStatusHistoryService {
                 .collect(Collectors.toList());
     }
 
+    public void deleteAllHistory() {
+        repository.deleteAll();
+    }
+
     private TicketStatusHistoryDTO convertToDTO(TicketStatusHistory history) {
         return new TicketStatusHistoryDTO(
                 history.getId(),

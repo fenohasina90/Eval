@@ -1,4 +1,5 @@
 import api, { get, Legacy } from "./api";
+import backendApi from './backend-api';
 
 const allAPI = [
     { url: 'Computer', path: '/Assets/Computer', ids: null },
@@ -338,6 +339,13 @@ async function purgeAll(selectedEntities = allAPI.map((entity) => entity.url), o
         } finally {
             entity.ids = null;
         }
+    }
+
+    // Reset the backend SQLite database
+    try {
+        await backendApi.delete('/api/reset');
+    } catch (error) {
+        console.error('Erreur de reset de la base backend', error);
     }
 
     return purgeResults;

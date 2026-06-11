@@ -32,4 +32,9 @@ public class TicketStatusHistoryController {
 
         return service.createHistory(ticketId, oldStatus, newStatus, changedBy, comment, solution);
     }
+
+    @DeleteMapping
+    public void deleteAllHistory() {
+        service.deleteAllHistory();
+    }
 }
