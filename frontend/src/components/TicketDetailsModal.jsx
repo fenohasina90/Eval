@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { formatStatusLabel } from '../services/frontOfficeKanbanTicketService'
+import { formatStatusLabel, getTicketHistory } from '../services/frontOfficeKanbanTicketService'
 import Modal from './Modal'
 import { Button } from '../components'
+import backendApi from '../services/backend-api'
 
 function FieldRow({ label, value, isDark }) {
   if (value === undefined || value === null || String(value).trim().length === 0) return null
@@ -99,6 +100,8 @@ export default function TicketDetailsModal({
   customization = null,
 }) {
   const [isDark, setIsDark] = useState(false)
+  const [history, setHistory] = useState([])
+  const [exportingPdf, setExportingPdf] = useState(false)
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -114,6 +117,48 @@ export default function TicketDetailsModal({
     
     return () => observer.disconnect()
   }, [])
+
+  useEffect(() => {
+    if (ticket?.id && isOpen) {
+      loadHistory()
+    }
+  }, [ticket?.id, isOpen])
+
+  const loadHistory = async () => {
+    if (!ticket?.id) return
+    try {
+      const data = await getTicketHistory(ticket.id)
+      setHistory(data)
+    } catch (error) {
+      console.error('Failed to load history:', error)
+    }
+  }
+
+  const exportPdf = async () => {
+    if (!ticket) return
+    try {
+      setExportingPdf(true)
+      const response = await backendApi.post(
+        '/api/pdf/ticket',
+        { ticket, history },
+        { responseType: 'blob' }
+      )
+      
+      // Create download link
+      const url = window.URL.createObjectURL(new Blob([response.data]))
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute('download', `ticket_${ticket.id}.pdf`)
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+    } catch (error) {
+      console.error('Failed to export PDF:', error)
+    } finally {
+      setExportingPdf(false)
+    }
+  }
 
   const detailsTicketId = ticket?.id
   const detailsStatus = ticket ? formatStatusLabel(ticket.status, customization) : ''
@@ -148,6 +193,13 @@ export default function TicketDetailsModal({
               }}
             >
               Voir l'historique
+            </Button>
+            <Button
+              variant="primary"
+              onClick={exportPdf}
+              disabled={exportingPdf}
+            >
+              {exportingPdf ? 'Export en cours…' : 'Exporter PDF'}
             </Button>
           </div>
           <div className={`rounded-xl border p-4 ${isDark ? 'border-gray-700 bg-gray-700/50' : 'border-gray-100 bg-gray-50'}`}>

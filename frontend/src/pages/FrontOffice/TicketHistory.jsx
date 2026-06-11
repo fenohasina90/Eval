@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { Container, H1, Loading, Error, Button } from '../../components'
 import { getTicketHistory, formatStatusLabel, getTicketDetails } from '../../services/frontOfficeKanbanTicketService'
 import { getKanbanCustomization } from '../../services/frontOfficeKanbanTicketService'
+import backendApi from '../../services/backend-api'
 
 function formatDate(dateStr) {
   if (!dateStr) return '—'
@@ -26,6 +27,7 @@ export default function TicketHistory() {
   const [error, setError] = useState('')
   const [ticket, setTicket] = useState(null)
   const [customization, setCustomization] = useState(null)
+  const [exportingPdf, setExportingPdf] = useState(false)
 
   const loadData = useCallback(async () => {
     if (!ticketId) return
@@ -47,6 +49,31 @@ export default function TicketHistory() {
     }
   }, [ticketId])
 
+  const exportPdf = async () => {
+    if (!ticket) return
+    try {
+      setExportingPdf(true)
+      const response = await backendApi.post(
+        '/api/pdf/ticket',
+        { ticket, history },
+        { responseType: 'blob' }
+      )
+      
+      const url = window.URL.createObjectURL(new Blob([response.data]))
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute('download', `ticket_${ticketId}.pdf`)
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+    } catch (error) {
+      console.error('Failed to export PDF:', error)
+    } finally {
+      setExportingPdf(false)
+    }
+  }
+
   useEffect(() => {
     loadData()
   }, [loadData])
@@ -65,9 +92,18 @@ export default function TicketHistory() {
             </p>
           )}
         </div>
-        <Button variant="outline" onClick={() => navigate(-1)}>
-          Retour
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => navigate(-1)}>
+            Retour
+          </Button>
+          <Button
+            variant="primary"
+            onClick={exportPdf}
+            disabled={exportingPdf}
+          >
+            {exportingPdf ? 'Export en cours…' : 'Exporter PDF'}
+          </Button>
+        </div>
       </div>
 
       {history.length === 0 ? (

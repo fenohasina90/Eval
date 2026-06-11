@@ -18,19 +18,19 @@ const typeOptions = [
   { value: 'Computer', label: 'Ordinateurs' },
   { value: 'Monitor', label: 'Écrans' },
   { value: 'Printer', label: 'Imprimantes' },
-  { value: 'NetworkEquipment', label: 'Matériel réseau' },
-  { value: 'Peripheral', label: 'Périphériques' },
+  // { value: 'NetworkEquipment', label: 'Matériel réseau' },
+  // { value: 'Peripheral', label: 'Périphériques' },
   { value: 'Phone', label: 'Téléphones' },
-  { value: 'Rack', label: 'Baies' },
-  { value: 'Enclosure', label: 'Châssis' },
-  { value: 'Software', label: 'Logiciels' },
-  { value: 'PassiveDCEquipment', label: 'Équipements passifs' },
-  { value: 'PDU', label: 'PDU' },
-  { value: 'Cable', label: 'Câbles' },
-  { value: 'Unmanaged', label: 'Actif non géré' },
-  { value: 'Appliance', label: 'Applicatif' },
-  { value: 'SoftwareLicense', label: 'Licence' },
-  { value: 'Certificate', label: 'Certificat' }
+  // { value: 'Rack', label: 'Baies' },
+  // { value: 'Enclosure', label: 'Châssis' },
+  // { value: 'Software', label: 'Logiciels' },
+  // { value: 'PassiveDCEquipment', label: 'Équipements passifs' },
+  // { value: 'PDU', label: 'PDU' },
+  // { value: 'Cable', label: 'Câbles' },
+  // { value: 'Unmanaged', label: 'Actif non géré' },
+  // { value: 'Appliance', label: 'Applicatif' },
+  // { value: 'SoftwareLicense', label: 'Licence' },
+  // { value: 'Certificate', label: 'Certificat' }
 ]
 
 export default function ElementList() {
