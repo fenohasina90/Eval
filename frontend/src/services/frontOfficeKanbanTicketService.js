@@ -448,3 +448,29 @@ export async function getTicketHistory(ticketId) {
     return []
   }
 }
+
+export async function exportElementListToPdf(elements, title) {
+  try {
+    const response = await backendApi.post(
+      '/api/pdf/elements',
+      { elements, title },
+      {
+        responseType: 'blob'
+      }
+    )
+    
+    const url = window.URL.createObjectURL(new Blob([response.data]))
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', title ? `${title}.pdf` : 'liste_actifs.pdf')
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+    
+    return true
+  } catch (error) {
+    console.error('Error exporting element list to PDF:', error)
+    throw error
+  }
+}

@@ -78,19 +78,30 @@ function mapType(value) {
   return null
 }
 
-function mapStatus(value) {
+function mapStatus(value, customization = null) {
   const raw = String(value ?? '').trim()
   const numeric = coerceId(raw)
   if (numeric) return numeric
 
   const key = normalizeKey(raw)
   if (!key) return null
-  if (key === 'new' || key === 'nouveau') return 1
-  if (key === 'assigned' || key === 'in progress' || key.includes('assigne')) return 2
-  if (key === 'planned' || key.includes('planifie')) return 3
-  if (key === 'pending' || key.includes('attente')) return 4
-  if (key === 'solved' || key.includes('resolu')) return 5
-  if (key === 'closed' || key === 'clos') return 6
+
+  // Check custom labels from SQLite first
+  if (customization?.labelsByStatus) {
+    for (const [statusId, label] of Object.entries(customization.labelsByStatus)) {
+      if (normalizeKey(label) === key) {
+        return Number(statusId)
+      }
+    }
+  }
+
+  // Fallback to hard-coded values
+  if (key === 'new' || key === 'nouveau' || key === 'vaovao') return 1
+  if (key === 'assigned' || key === 'in progress' || key.includes('assigne') || key.includes('efalany') || key.includes('efa lany')) return 2
+  if (key === 'planned' || key.includes('planifie') || key === 'nandratra') return 3
+  if (key === 'pending' || key.includes('attente') || key === 'miandry') return 4
+  if (key === 'solved' || key.includes('resolu') || key === 'voavaha') return 5
+  if (key === 'closed' || key === 'clos' || key === 'tapaka') return 6
   if (key === 'approval' || key.includes('approbation')) return 10
   return null
 }
@@ -294,7 +305,7 @@ async function resolveAsset({ itemKey, assetsIndex, assetRowsIndex, typeCache })
   return assetsIndex.get(itemKey) ?? null
 }
 
-export async function importTicketsFromRows(rows, { onProgress, onResults, assetRows } = {}) {
+export async function importTicketsFromRows(rows, { onProgress, onResults, assetRows, customization } = {}) {
   const total = Array.isArray(rows) ? rows.length : 0
   const results = []
 
@@ -313,7 +324,7 @@ export async function importTicketsFromRows(rows, { onProgress, onResults, asset
     const title = String(row?.Titre ?? '').trim()
     const description = String(row?.Description ?? '').trim()
     const type = mapType(row?.Type)
-    const status = mapStatus(row?.Status)
+    const status = mapStatus(row?.Status, customization)
     const priority = mapPriority(row?.Priority)
     const dateTime = buildDateTime(row?.Date, row?.Heure)
     const items = parseItemsField(row?.Items)

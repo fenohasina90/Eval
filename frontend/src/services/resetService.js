@@ -11,7 +11,7 @@ const allAPI = [
 
     // { url: 'Rack', path: '/Assets/Rack', ids: null },
     // { url: 'PDU', path: '/Assets/PDU', ids: null },
-    // { url: 'Enclosure', path: '/Assets/Enclosure', ids: null },
+    { url: 'Enclosure', path: '/Assets/Enclosure', ids: null },
     // { url: 'PassiveDCEquipment', path: '/Assets/PassiveDCEquipment', ids: null },
     // { url: 'Cable', path: '/Assets/Cable', ids: null },
     // { url: 'Unmanaged', path: '/Assets/Unmanaged', ids: null },
@@ -48,7 +48,7 @@ const allAPI = [
     // { url: 'NetworkEquipmentModel', path: '/Dropdowns/NetworkEquipmentModel', ids: null },
     // { url: 'RackModel', path: '/Dropdowns/RackModel', ids: null },
     // { url: 'PDUModel', path: '/Dropdowns/PDUModel', ids: null },
-    // { url: 'EnclosureModel', path: '/Dropdowns/EnclosureModel', ids: null },
+    { url: 'EnclosureModel', path: '/Dropdowns/EnclosureModel', ids: null },
     // { url: 'PassiveDCEquipmentModel', path: '/Dropdowns/PassiveDCEquipmentModel', ids: null },
 
     { url: 'User', path: '/Administration/User', ids: null },

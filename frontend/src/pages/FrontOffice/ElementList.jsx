@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { searchElements, getStates, getDropdowns } from '../../services/frontOfficeService'
+import { exportElementListToPdf } from '../../services/frontOfficeKanbanTicketService'
 import {
   Button,
   Container,
@@ -38,6 +39,7 @@ export default function ElementList() {
   const [statusOptions, setStatusOptions] = useState([{ value: '', label: 'Tous les statuts' }])
   const [dropdownsMap, setDropdownsMap] = useState({ locations: {}, manufacturers: {}, models: {} })
   const [loading, setLoading] = useState(false)
+  const [exporting, setExporting] = useState(false)
   const [error, setError] = useState(false)
   
   // États de recherche
@@ -99,6 +101,36 @@ export default function ElementList() {
     fetchElements(criteria)
   }
 
+  // Handle PDF export
+  const handleExportPdf = async () => {
+    try {
+      setExporting(true)
+      
+      // Prepare elements with display names
+      const elementsForPdf = elements.map(el => {
+        const modelId = el.computermodels_id || el.monitormodels_id || el.printermodels_id ||
+                        el.networkequipmentmodels_id || el.peripheralmodels_id || el.phonemodels_id ||
+                        el.rackmodels_id || el.enclosuremodels_id || el.passivedcequipmentmodels_id ||
+                        el.pdumodels_id || el.cablemodels_id || el.unmanagedmodels_id || el.appliancemodels_id;
+        
+        return {
+          ...el,
+          itemtype: getTypeLabel(el.itemtype),
+          manufacturerName: dropdownsMap.manufacturers[el.manufacturers_id] || el.manufacturers_id || '-',
+          modelName: dropdownsMap.models[modelId] || modelId || '-',
+          locationName: dropdownsMap.locations[el.locations_id] || el.locations_id || '-',
+          statusName: getStatusLabel(el.states_id || el.status)
+        }
+      })
+      
+      await exportElementListToPdf(elementsForPdf, 'Liste des actifs')
+    } catch (error) {
+      console.error('Failed to export PDF:', error)
+    } finally {
+      setExporting(false)
+    }
+  }
+
   // Traduction du type d'actif
   const getTypeLabel = (type) => {
     const t = typeOptions.find(opt => opt.value === type)
@@ -116,6 +148,15 @@ export default function ElementList() {
     <Container size="7xl">
       <div className="mb-6 flex justify-between items-end">
         <H1>Mes Actifs</H1>
+        {elements.length > 0 && (
+          <Button 
+            variant="secondary" 
+            onClick={handleExportPdf} 
+            disabled={exporting}
+          >
+            {exporting ? 'Exportation en cours...' : 'Exporter en PDF'}
+          </Button>
+        )}
       </div>
 
       <Card className="mb-8">

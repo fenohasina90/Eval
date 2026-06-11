@@ -95,10 +95,10 @@ export const TICKET_TYPES = [
 export const TICKET_STATUSES = [
   { key: 1, label: 'Nouveau', color: 'blue' },
   { key: 2, label: 'En cours (Assigne)', color: 'yellow' },
-  { key: 3, label: 'En cours (Planifie)', color: 'orange' },
-  { key: 4, label: 'En attente', color: 'purple' },
-  { key: 5, label: 'Resolu', color: 'green' },
-  { key: 6, label: 'Clos', color: 'gray' },
+  // { key: 3, label: 'En cours (Planifie)', color: 'orange' },
+  // { key: 4, label: 'En attente', color: 'purple' },
+  // { key: 5, label: 'Resolu', color: 'green' },
+  { key: 6, label: 'Clos', color: 'green' },
 ]
 
 export async function getDashboardStats() {

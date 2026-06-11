@@ -1,9 +1,10 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { Alert, Badge, Button, Card, Checkbox, Input, Label, P, Table, Tbody, Td, Th, Thead, Tr } from '../../components'
 import { importAssetsFromRows, parseCsvText, REQUIRED_COLUMNS } from '../../services/importDataService'
 import { importTicketsFromRows, REQUIRED_TICKET_COLUMNS } from '../../services/importTicketCsvService'
 import { importTicketCostsFromRows, REQUIRED_TICKET_COST_COLUMNS } from '../../services/importTicketCostsCsvService'
 import { importZipImages } from '../../services/importZipImagesService'
+import { getKanbanCustomization } from '../../services/frontOfficeKanbanTicketService'
 
 function computeStats(results) {
   const total = results.length
@@ -172,7 +173,7 @@ export default function ImportData() {
     }
 
     if (hasTicketRows) {
-      await onImportTickets(e)
+      await fetchAndImportTickets()
     }
 
     if (hasCostRows) {
@@ -218,8 +219,7 @@ export default function ImportData() {
     }
   }
 
-  async function onImportTickets(e) {
-    e.preventDefault()
+  const fetchAndImportTickets = useCallback(async () => {
     if (!hasTicketRows || isTicketImporting) return
 
     setIsTicketImporting(true)
@@ -228,8 +228,10 @@ export default function ImportData() {
     setTicketProgress({ done: 0, total: ticketRows.length })
 
     try {
+      const customization = await getKanbanCustomization()
       const out = await importTicketsFromRows(ticketRows, {
         assetRows,
+        customization,
         onProgress: ({ done, total }) => setTicketProgress({ done, total }),
         onResults: (partial) => setTicketResults(partial),
       })
@@ -239,6 +241,11 @@ export default function ImportData() {
     } finally {
       setIsTicketImporting(false)
     }
+  }, [hasTicketRows, isTicketImporting, ticketRows, assetRows])
+
+  async function onImportTickets(e) {
+    e.preventDefault()
+    await fetchAndImportTickets()
   }
 
   async function onPickCostFile(e) {
@@ -334,7 +341,7 @@ export default function ImportData() {
   
   const isBusy = isAssetParsing || isTicketParsing || isCostParsing || isAssetImporting || isTicketImporting || isCostImporting || isZipImporting
   const canSubmit = !isBusy && 
-    (hasAssetRows || hasTicketRows || hasCostRows || hasZipFile) && 
+    (hasAssetRows || hasTicketRows || hasCostRows) && 
     (!isZipRequired || hasZipFile)
 
   return (
@@ -499,7 +506,7 @@ export default function ImportData() {
             <div className="text-sm text-gray-600">
               {isZipRequired && !hasZipFile 
                 ? "Veuillez sélectionner un fichier ZIP pour continuer." 
-                : "Sélectionnez au moins un fichier CSV valide."}
+                : "Sélectionnez au moins un fichier CSV (actifs, tickets ou coûts) valide."}
             </div>
           )}
         </div>

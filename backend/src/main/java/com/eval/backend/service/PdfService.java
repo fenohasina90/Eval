@@ -46,6 +46,56 @@ public class PdfService {
         return out.toByteArray();
     }
 
+    public byte[] generateElementListPdf(List<Map<String, Object>> elements, String title) throws Exception {
+        Document document = new Document(PageSize.A4.rotate());
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        PdfWriter.getInstance(document, out);
+
+        document.open();
+
+        // Add header
+        Paragraph header = new Paragraph(title != null ? title : "Liste des Actifs", TITLE_FONT);
+        header.setAlignment(Element.ALIGN_CENTER);
+        document.add(header);
+        document.add(Chunk.NEWLINE);
+
+        if (elements != null && !elements.isEmpty()) {
+            PdfPTable table = new PdfPTable(8);
+            table.setWidthPercentage(100);
+            table.setSpacingBefore(10f);
+
+            // Header row
+            addTableHeaderCell(table, "ID");
+            addTableHeaderCell(table, "Type");
+            addTableHeaderCell(table, "Nom");
+            addTableHeaderCell(table, "Numéro de série");
+            addTableHeaderCell(table, "Fabricant");
+            addTableHeaderCell(table, "Modèle");
+            addTableHeaderCell(table, "Lieu");
+            addTableHeaderCell(table, "Statut");
+
+            for (Map<String, Object> element : elements) {
+                addTableCell(table, getStringValue(element, "id"));
+                addTableCell(table, getStringValue(element, "itemtype"));
+                addTableCell(table, getStringValue(element, "name"));
+                addTableCell(table, getStringValue(element, "serial") != null ? getStringValue(element, "serial") : getStringValue(element, "otherserial"));
+                addTableCell(table, getStringValue(element, "manufacturerName"));
+                addTableCell(table, getStringValue(element, "modelName"));
+                addTableCell(table, getStringValue(element, "locationName"));
+                addTableCell(table, getStringValue(element, "statusName"));
+            }
+
+            document.add(table);
+        } else {
+            Paragraph emptyParagraph = new Paragraph("Aucun actif trouvé.", NORMAL_FONT);
+            emptyParagraph.setAlignment(Element.ALIGN_CENTER);
+            document.add(emptyParagraph);
+        }
+
+        document.close();
+        return out.toByteArray();
+    }
+
     private void addHeader(Document document, Map<String, Object> ticket) throws Exception {
         Paragraph header = new Paragraph("Détails du Ticket", TITLE_FONT);
         header.setAlignment(Element.ALIGN_CENTER);

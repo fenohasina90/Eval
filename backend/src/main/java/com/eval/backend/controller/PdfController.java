@@ -39,4 +39,20 @@ public class PdfController {
                 .headers(headers)
                 .body(pdfBytes);
     }
+
+    @PostMapping("/elements")
+    public ResponseEntity<byte[]> generateElementListPdf(@RequestBody Map<String, Object> request) throws Exception {
+        List<Map<String, Object>> elements = (List<Map<String, Object>>) request.get("elements");
+        String title = (String) request.get("title");
+        
+        byte[] pdfBytes = pdfService.generateElementListPdf(elements, title);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_PDF);
+        headers.setContentDispositionFormData("attachment", "liste_actifs.pdf");
+
+        return ResponseEntity.ok()
+                .headers(headers)
+                .body(pdfBytes);
+    }
 }
