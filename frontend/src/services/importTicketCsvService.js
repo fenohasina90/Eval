@@ -1,4 +1,5 @@
 import { get, post, put, Legacy } from './api'
+import backendApi from './backend-api'
 
 export const REQUIRED_TICKET_COLUMNS = [
   'Ref_Ticket',
@@ -85,7 +86,7 @@ function mapStatus(value) {
   const key = normalizeKey(raw)
   if (!key) return null
   if (key === 'new' || key === 'nouveau') return 1
-  if (key === 'assigned' || key.includes('assigne')) return 2
+  if (key === 'assigned' || key === 'in progress' || key.includes('assigne')) return 2
   if (key === 'planned' || key.includes('planifie')) return 3
   if (key === 'pending' || key.includes('attente')) return 4
   if (key === 'solved' || key.includes('resolu')) return 5
@@ -369,6 +370,18 @@ export async function importTicketsFromRows(rows, { onProgress, onResults, asset
       const ticketId = await createTicket(payload)
       if (refKey) existingExternalIds.add(refKey)
 
+      // Save initial status to history
+      try {
+        await backendApi.post('/api/ticket-history', {
+          ticketId: ticketId,
+          oldStatus: null,
+          newStatus: payload.status,
+          comment: "Importation du ticket"
+        });
+      } catch (error) {
+        console.error("Erreur lors de l'enregistrement de l'historique initial", error);
+      }
+
       const missingItems = []
       const linkedItems = []
       const linkErrors = []
@@ -399,6 +412,17 @@ export async function importTicketsFromRows(rows, { onProgress, onResults, asset
         if (isClosed) {
           try {
             await updateTicket(ticketId, { status: 6 })
+            // Save the status change to history
+            try {
+              await backendApi.post('/api/ticket-history', {
+                ticketId: ticketId,
+                oldStatus: payload.status,
+                newStatus: 6,
+                comment: "Clôture du ticket (import)"
+              });
+            } catch (err) {
+              console.error("Erreur lors de l'enregistrement de l'historique de clôture", err);
+            }
             parts.push(`Créé et clôturé (id=${ticketId}).`)
           } catch (err) {
             parts.push(`Créé (id=${ticketId}) mais erreur clôture: ${extractErrorMessage(err)}.`)

@@ -1,4 +1,5 @@
 import { Legacy } from './api';
+import backendApi from './backend-api';
 
 function extractItems(data) {
     if (Array.isArray(data)) return data;
@@ -83,6 +84,18 @@ export async function createTicketWithItems(ticketData, selectedItems = [], acto
 
         if (!ticketId) {
             throw new Error("La création du ticket a échoué (pas d'ID retourné).");
+        }
+
+        // Save initial status to history
+        try {
+            await backendApi.post('/api/ticket-history', {
+                ticketId: ticketId,
+                oldStatus: null,
+                newStatus: parseInt(ticketData.status) || 1,
+                comment: "Création du ticket"
+            });
+        } catch (error) {
+            console.error("Erreur lors de l'enregistrement de l'historique initial", error);
         }
 
         // ── 2. Liaison actifs (Item_Ticket) ───────────────────────────
