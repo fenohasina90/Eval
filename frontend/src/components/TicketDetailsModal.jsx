@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { formatStatusLabel } from '../services/frontOfficeKanbanTicketService'
 import Modal from './Modal'
+import { Button } from '../components'
 
 function FieldRow({ label, value, isDark }) {
   if (value === undefined || value === null || String(value).trim().length === 0) return null
@@ -97,6 +99,7 @@ export default function TicketDetailsModal({
   customization = null,
 }) {
   const [isDark, setIsDark] = useState(false)
+  const navigate = useNavigate()
 
   useEffect(() => {
     const updateDarkMode = () => {
@@ -136,6 +139,17 @@ export default function TicketDetailsModal({
       )}
       {ticket && (
         <div className="space-y-4">
+          <div className="flex gap-2 justify-end">
+            <Button
+              variant="outline"
+              onClick={() => {
+                onClose()
+                navigate(`/front/ticket-history/${detailsTicketId}`)
+              }}
+            >
+              Voir l'historique
+            </Button>
+          </div>
           <div className={`rounded-xl border p-4 ${isDark ? 'border-gray-700 bg-gray-700/50' : 'border-gray-100 bg-gray-50'}`}>
             <div className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
               {ticket.name || 'Sans titre'}

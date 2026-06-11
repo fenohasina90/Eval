@@ -395,7 +395,7 @@ export async function getTicketActors(ticketId) {
   return { requesters, assignees, observers }
 }
 
-export async function updateTicketStatus(ticketId, toStatus, extra = {}) {
+export async function updateTicketStatus(ticketId, toStatus, extra = {}, oldStatus = null) {
   const basePayload = compactObject({
     id:     Number(ticketId),
     status: Number(toStatus),
@@ -418,9 +418,33 @@ export async function updateTicketStatus(ticketId, toStatus, extra = {}) {
     }
   }
 
+  // Save history to backend
+  try {
+    await backendApi.post('/api/ticket-history', {
+      ticketId: Number(ticketId),
+      oldStatus: oldStatus,
+      newStatus: Number(toStatus),
+      changedBy: 'Utilisateur',
+      comment: extra.comment,
+      solution: extra.solution,
+    })
+  } catch (error) {
+    console.error('Failed to save ticket history:', error)
+  }
+
   try {
     return await getTicketDetails(ticketId)
   } catch {
     return null
+  }
+}
+
+export async function getTicketHistory(ticketId) {
+  try {
+    const response = await backendApi.get(`/api/ticket-history/ticket/${ticketId}`)
+    return response.data
+  } catch (error) {
+    console.error('Failed to fetch ticket history:', error)
+    return []
   }
 }

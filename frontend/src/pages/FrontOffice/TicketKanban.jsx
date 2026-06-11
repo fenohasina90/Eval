@@ -199,11 +199,11 @@ export default function TicketKanban() {
     setMoveSubmitting(false)
   }, [])
 
-  const applyMove = useCallback(async ({ ticketId, toStatus, extra }) => {
+  const applyMove = useCallback(async ({ ticketId, toStatus, extra, fromStatus }) => {
     setMoveSubmitting(true)
     setMoveError('')
     try {
-      const updated = await updateTicketStatus(ticketId, toStatus, extra)
+      const updated = await updateTicketStatus(ticketId, toStatus, extra, fromStatus)
       setTickets((prev) =>
         prev.map((t) => {
           if (Number(t?.id) !== Number(ticketId)) return t
@@ -233,7 +233,7 @@ export default function TicketKanban() {
       return
     }
 
-    applyMove({ ticketId, toStatus, extra: {} })
+    applyMove({ ticketId, toStatus, extra: {}, fromStatus })
   }, [applyMove])
 
   const openCreate = useCallback(() => {
@@ -374,7 +374,12 @@ export default function TicketKanban() {
               variant="primary"
               onClick={() => {
                 if (!pendingMove) return
-                applyMove({ ticketId: pendingMove.ticketId, toStatus: pendingMove.toStatus, extra: moveForm })
+                applyMove({
+                  ticketId: pendingMove.ticketId,
+                  toStatus: pendingMove.toStatus,
+                  extra: moveForm,
+                  fromStatus: pendingMove.fromStatus
+                })
               }}
               disabled={moveSubmitting || !pendingMove}
             >
