@@ -29,6 +29,9 @@ public class TicketStatusHistory {
     @Column(name = "solution", columnDefinition = "TEXT")
     private String solution;
 
+    @Column(name = "super_cout")
+    private Double superCout;
+
     @Column(name = "changed_at", nullable = false, updatable = false)
     private LocalDateTime changedAt;
 
@@ -92,6 +95,14 @@ public class TicketStatusHistory {
 
     public void setSolution(String solution) {
         this.solution = solution;
+    }
+
+    public Double getSuperCout() {
+        return superCout;
+    }
+
+    public void setSuperCout(Double superCout) {
+        this.superCout = superCout;
     }
 
     public LocalDateTime getChangedAt() {

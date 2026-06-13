@@ -29,8 +29,9 @@ public class TicketStatusHistoryController {
         String changedBy = (String) request.get("changedBy");
         String comment = (String) request.get("comment");
         String solution = (String) request.get("solution");
+        Double superCout = request.get("superCout") != null ? Double.valueOf(request.get("superCout").toString()) : null;
 
-        return service.createHistory(ticketId, oldStatus, newStatus, changedBy, comment, solution);
+        return service.createHistory(ticketId, oldStatus, newStatus, changedBy, comment, solution, superCout);
     }
 
     @DeleteMapping

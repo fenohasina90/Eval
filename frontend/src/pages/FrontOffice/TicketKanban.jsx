@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Button, Container, Error, H1, Input, Kanban, Loading, Textarea } from '../../components'
+import { Button, Container, Error, H1, Input, Kanban, Loading, Textarea, Select } from '../../components'
 import Modal from '../../components/Modal'
 import TicketDetailsModal from '../../components/TicketDetailsModal'
 import { CreateTicketForm } from './CreateTicket'
@@ -13,6 +13,7 @@ import {
   getTicketStatusId,
   getKanbanCustomization,
   updateTicketStatus,
+  fetchAllUsers,
 } from '../../services/frontOfficeKanbanTicketService'
 
 function formatDate(dateStr) {
@@ -74,6 +75,8 @@ export default function TicketKanban() {
   const [error, setError] = useState('')
   const [customization, setCustomization] = useState(DEFAULT_CUSTOMIZATION)
   const [customizationLoading, setCustomizationLoading] = useState(true)
+  const [users, setUsers] = useState([])
+  const [usersLoading, setUsersLoading] = useState(true)
 
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [detailsTicket, setDetailsTicket] = useState(null)
@@ -85,7 +88,7 @@ export default function TicketKanban() {
 
   const [moveOpen, setMoveOpen] = useState(false)
   const [pendingMove, setPendingMove] = useState(null)
-  const [moveForm, setMoveForm] = useState({ assigneeId: '', comment: '', solution: '' })
+  const [moveForm, setMoveForm] = useState({ assigneeId: '', comment: '', solution: '', pourcentage: '', action: '' })
   const [moveError, setMoveError] = useState('')
   const [moveSubmitting, setMoveSubmitting] = useState(false)
 
@@ -113,10 +116,20 @@ export default function TicketKanban() {
     }
   }, [])
 
+  const loadUsers = useCallback(async () => {
+    try {
+      const usersList = await fetchAllUsers()
+      setUsers(usersList)
+    } finally {
+      setUsersLoading(false)
+    }
+  }, [])
+
   useEffect(() => {
     loadTickets()
     loadCustomization()
-  }, [loadTickets, loadCustomization])
+    loadUsers()
+  }, [loadTickets, loadCustomization, loadUsers])
 
   useEffect(() => {
     const onChanged = () => loadCustomization()
@@ -194,7 +207,7 @@ export default function TicketKanban() {
   const resetMoveState = useCallback(() => {
     setMoveOpen(false)
     setPendingMove(null)
-    setMoveForm({ assigneeId: '', comment: '', solution: '' })
+    setMoveForm({ assigneeId: '', comment: '', solution: '', pourcentage: '', action: '' })
     setMoveError('')
     setMoveSubmitting(false)
   }, [])
@@ -340,52 +353,137 @@ export default function TicketKanban() {
 
           {moveError && <div className="text-sm text-red-600">{moveError}</div>}
 
-          {moveDialog?.fields?.map((field) => {
-            if (field.type === 'textarea') {
-              return (
-                <div key={field.key} className="space-y-2">
-                  <div className="text-sm font-medium text-gray-700">{field.label}</div>
-                  <Textarea
-                    value={moveForm[field.key] || ''}
-                    onChange={(e) => setMoveForm((prev) => ({ ...prev, [field.key]: e.target.value }))}
-                    rows={4}
-                  />
+          {/* Special case for reopen dialog */}
+          {moveDialog?.type === 'reopen' ? (
+            <div className="space-y-4">
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    if (!pendingMove) return
+                    applyMove({
+                      ticketId: pendingMove.ticketId,
+                      toStatus: pendingMove.toStatus,
+                      extra: { ...moveForm, action: 'annulation' },
+                      fromStatus: pendingMove.fromStatus
+                    })
+                  }}
+                  disabled={moveSubmitting}
+                >
+                  Annulation
+                </Button>
+                <div className="flex-1">
+                  <div className="text-sm font-medium text-gray-700 mb-2">Réouverture</div>
+                  <div className="flex gap-2">
+                    <Input
+                      type="number"
+                      placeholder="Pourcentage (%)"
+                      value={moveForm.pourcentage || ''}
+                      onChange={(e) => setMoveForm((prev) => ({ ...prev, pourcentage: e.target.value }))}
+                    />
+                    <Button
+                      variant="primary"
+                      onClick={() => {
+                        if (!pendingMove) return
+                        applyMove({
+                          ticketId: pendingMove.ticketId,
+                          toStatus: pendingMove.toStatus,
+                          extra: { ...moveForm, action: 'reouverture' },
+                          fromStatus: pendingMove.fromStatus
+                        })
+                      }}
+                      disabled={moveSubmitting || !pendingMove || !moveForm.pourcentage}
+                    >
+                      Valider
+                    </Button>
+                  </div>
                 </div>
-              )
-            }
-
-            return (
-              <div key={field.key} className="space-y-2">
-                <div className="text-sm font-medium text-gray-700">{field.label}</div>
-                <Input
-                  type={field.type || 'text'}
-                  value={moveForm[field.key] || ''}
-                  onChange={(e) => setMoveForm((prev) => ({ ...prev, [field.key]: e.target.value }))}
-                />
               </div>
-            )
-          })}
+            </div>
+          ) : (
+            <>
+              {moveDialog?.fields?.map((field) => {
+                if (field.key === 'assigneeId') {
+                  return (
+                    <div key={field.key} className="space-y-2">
+                      <div className="text-sm font-medium text-gray-700">Technicien (optionnel)</div>
+                      <Select
+                        value={moveForm[field.key] || ''}
+                        onChange={(e) => setMoveForm((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                        disabled={usersLoading}
+                      >
+                        <option value="">Sélectionner un technicien</option>
+                        {users.map((user) => (
+                          <option key={user.id} value={user.id}>
+                            {user.name}
+                          </option>
+                        ))}
+                      </Select>
+                    </div>
+                  )
+                }
 
-          <div className="flex items-center justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={resetMoveState} disabled={moveSubmitting}>
-              Annuler
-            </Button>
-            <Button
-              variant="primary"
-              onClick={() => {
-                if (!pendingMove) return
-                applyMove({
-                  ticketId: pendingMove.ticketId,
-                  toStatus: pendingMove.toStatus,
-                  extra: moveForm,
-                  fromStatus: pendingMove.fromStatus
-                })
-              }}
-              disabled={moveSubmitting || !pendingMove}
-            >
-              Valider
-            </Button>
-          </div>
+                if (field.key === 'superCout') {
+                  return (
+                    <div key={field.key} className="space-y-2">
+                      <div className="text-sm font-medium text-gray-700">{field.label}</div>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={moveForm[field.key] || ''}
+                        onChange={(e) => setMoveForm((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                      />
+                    </div>
+                  )
+                }
+
+                if (field.type === 'textarea') {
+                  return (
+                    <div key={field.key} className="space-y-2">
+                      <div className="text-sm font-medium text-gray-700">{field.label}</div>
+                      <Textarea
+                        value={moveForm[field.key] || ''}
+                        onChange={(e) => setMoveForm((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                        rows={4}
+                      />
+                    </div>
+                  )
+                }
+
+                return (
+                  <div key={field.key} className="space-y-2">
+                    <div className="text-sm font-medium text-gray-700">{field.label}</div>
+                    <Input
+                      type={field.type || 'text'}
+                      value={moveForm[field.key] || ''}
+                      onChange={(e) => setMoveForm((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                    />
+                  </div>
+                )
+              })}
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <Button variant="outline" onClick={resetMoveState} disabled={moveSubmitting}>
+                  Annuler
+                </Button>
+                <Button
+                  variant="primary"
+                  onClick={() => {
+                    if (!pendingMove) return
+                    applyMove({
+                      ticketId: pendingMove.ticketId,
+                      toStatus: pendingMove.toStatus,
+                      extra: moveForm,
+                      fromStatus: pendingMove.fromStatus
+                    })
+                  }}
+                  disabled={moveSubmitting || !pendingMove}
+                >
+                  Valider
+                </Button>
+              </div>
+            </>
+          )}
         </div>
       </Modal>
     </Container>

@@ -15,5 +15,21 @@ CREATE TABLE ticket_status_history (
     changed_by TEXT,
     comment TEXT,
     solution TEXT,
+    super_cout NUMERIC,
     changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
+
+CREATE TABLE super_cout (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ticket_id INTEGER NOT NULL,
+    cout NUMERIC NOT NULL
+);
+
+CREATE TABLE cout_ouverture (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ticket_id INTEGER NOT NULL,
+    cout_ouverture NUMERIC NOT NULL,
+    pourcentage NUMERIC NOT NULL,
+    super_cout_initial NUMERIC NOT NULL
+);
+

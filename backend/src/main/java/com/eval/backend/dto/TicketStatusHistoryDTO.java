@@ -10,13 +10,14 @@ public class TicketStatusHistoryDTO {
     private String changedBy;
     private String comment;
     private String solution;
+    private Double superCout;
     private LocalDateTime changedAt;
 
     // Constructors
     public TicketStatusHistoryDTO() {}
 
     public TicketStatusHistoryDTO(Long id, Long ticketId, Integer oldStatus, Integer newStatus,
-                                    String changedBy, String comment, String solution, LocalDateTime changedAt) {
+                                    String changedBy, String comment, String solution, Double superCout, LocalDateTime changedAt) {
         this.id = id;
         this.ticketId = ticketId;
         this.oldStatus = oldStatus;
@@ -24,6 +25,7 @@ public class TicketStatusHistoryDTO {
         this.changedBy = changedBy;
         this.comment = comment;
         this.solution = solution;
+        this.superCout = superCout;
         this.changedAt = changedAt;
     }
 
@@ -82,6 +84,14 @@ public class TicketStatusHistoryDTO {
 
     public void setSolution(String solution) {
         this.solution = solution;
+    }
+
+    public Double getSuperCout() {
+        return superCout;
+    }
+
+    public void setSuperCout(Double superCout) {
+        this.superCout = superCout;
     }
 
     public LocalDateTime getChangedAt() {

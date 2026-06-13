@@ -16,7 +16,7 @@ public class TicketStatusHistoryService {
     private TicketStatusHistoryRepository repository;
 
     public TicketStatusHistoryDTO createHistory(Long ticketId, Integer oldStatus, Integer newStatus,
-                                                  String changedBy, String comment, String solution) {
+                                                  String changedBy, String comment, String solution, Double superCout) {
         TicketStatusHistory history = new TicketStatusHistory();
         history.setTicketId(ticketId);
         history.setOldStatus(oldStatus);
@@ -24,6 +24,7 @@ public class TicketStatusHistoryService {
         history.setChangedBy(changedBy);
         history.setComment(comment);
         history.setSolution(solution);
+        history.setSuperCout(superCout);
 
         TicketStatusHistory saved = repository.save(history);
         return convertToDTO(saved);
@@ -49,6 +50,7 @@ public class TicketStatusHistoryService {
                 history.getChangedBy(),
                 history.getComment(),
                 history.getSolution(),
+                history.getSuperCout(),
                 history.getChangedAt()
         );
     }

@@ -148,7 +148,7 @@ export default function ElementList() {
     <Container size="7xl">
       <div className="mb-6 flex justify-between items-end">
         <H1>Mes Actifs</H1>
-        {elements.length > 0 && (
+        {/* {elements.length > 0 && (
           <Button 
             variant="secondary" 
             onClick={handleExportPdf} 
@@ -156,7 +156,7 @@ export default function ElementList() {
           >
             {exporting ? 'Exportation en cours...' : 'Exporter en PDF'}
           </Button>
-        )}
+        )} */}
       </div>
 
       <Card className="mb-8">

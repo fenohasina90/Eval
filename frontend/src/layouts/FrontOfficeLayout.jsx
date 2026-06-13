@@ -11,6 +11,7 @@ const navItems = [
   { path: '/front', label: 'Mes éléments', icon: TicketIcon },
   { path: '/front/create-ticket', label: 'Créer un ticket', icon: PlusIcon },
   { path: '/front/tickets-kanban', label: 'Tickets (Kanban)', icon: KanbanIcon },
+  { path: '/front/item-type-costs', label: 'Cout', icon: KanbanIcon },
 ]
 
 export default function FrontOfficeLayout() {
@@ -154,6 +155,25 @@ function KanbanIcon({ className }) {
         strokeLinejoin="round"
         strokeWidth={1.5}
         d="M5.25 6.75h6a.75.75 0 01.75.75v12a.75.75 0 01-.75.75h-6a.75.75 0 01-.75-.75v-12a.75.75 0 01.75-.75Zm7.5 0h6a.75.75 0 01.75.75v6a.75.75 0 01-.75.75h-6a.75.75 0 01-.75-.75v-6a.75.75 0 01.75-.75Z"
+      />
+    </svg>
+  )
+}
+
+function CostIcon({ className }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.5}
+        d="M12 6c1.657 0 3 1.567 3 3.5S13.657 13 12 13s-3-1.567-3-3.5S10.343 6 12 6Z"
+      />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.5}
+        d="M5.25 19.5a4.5 4.5 0 016.75-3.897 4.5 4.5 0 016.75 3.897M12 3.75h-.008v.008H12v-.008Z"
       />
     </svg>
   )

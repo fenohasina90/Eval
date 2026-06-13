@@ -134,6 +134,7 @@ export async function importTicketCostsFromRows(rows, { onProgress, onResults } 
       })
 
       const createdId = await createTicketCost(ticketId, payload)
+
       results.push({
         index: idx + 1,
         itemType: 'TicketCost',

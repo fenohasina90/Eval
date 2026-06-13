@@ -16,6 +16,7 @@ import ElementList from '../pages/FrontOffice/ElementList'
 import CreateTicket from '../pages/FrontOffice/CreateTicket'
 import TicketKanban from '../pages/FrontOffice/TicketKanban'
 import TicketHistory from '../pages/FrontOffice/TicketHistory'
+import ItemTypeCosts from '../pages/FrontOffice/ItemTypeCosts'
 
 const router = createBrowserRouter([
   {
@@ -43,6 +44,7 @@ const router = createBrowserRouter([
       { path: 'create-ticket', element: <CreateTicket /> },
       { path: 'tickets-kanban', element: <TicketKanban /> },
       { path: 'ticket-history/:ticketId', element: <TicketHistory /> },
+      { path: 'item-type-costs', element: <ItemTypeCosts /> },
     ]
   }
 ])

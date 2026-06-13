@@ -185,7 +185,7 @@ export default function TicketDetailsModal({
       {ticket && (
         <div className="space-y-4">
           <div className="flex gap-2 justify-end">
-            <Button
+            {/* <Button
               variant="outline"
               onClick={() => {
                 onClose()
@@ -193,14 +193,14 @@ export default function TicketDetailsModal({
               }}
             >
               Voir l'historique
-            </Button>
-            <Button
+            </Button> */}
+            {/* <Button
               variant="primary"
               onClick={exportPdf}
               disabled={exportingPdf}
             >
               {exportingPdf ? 'Export en cours…' : 'Exporter PDF'}
-            </Button>
+            </Button> */}
           </div>
           <div className={`rounded-xl border p-4 ${isDark ? 'border-gray-700 bg-gray-700/50' : 'border-gray-100 bg-gray-50'}`}>
             <div className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>

@@ -1,0 +1,19 @@
+ETU003059
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+- ticket déjà closed peut etre revenir en en cours .
+- il y a une boite de dialogue annulation et lorsqu'on valide on supprime ausi le cout super cout liee avec lui.

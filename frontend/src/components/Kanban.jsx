@@ -31,15 +31,15 @@ import { useState, useCallback, useMemo, useRef } from 'react'
 
 /* ─── Palette de couleurs par nom ─── */
 const COLOR_MAP = {
-  blue:   { bg: 'bg-blue-50',   border: 'border-blue-200',  accent: 'bg-blue-500',  text: 'text-blue-700',  badge: 'bg-blue-100 text-blue-700',  dropBg: 'bg-blue-100/60'  },
-  green:  { bg: 'bg-emerald-50', border: 'border-emerald-200', accent: 'bg-emerald-500', text: 'text-emerald-700', badge: 'bg-emerald-100 text-emerald-700', dropBg: 'bg-emerald-100/60' },
-  amber:  { bg: 'bg-amber-50',  border: 'border-amber-200', accent: 'bg-amber-500', text: 'text-amber-700', badge: 'bg-amber-100 text-amber-700', dropBg: 'bg-amber-100/60' },
-  red:    { bg: 'bg-red-50',    border: 'border-red-200',   accent: 'bg-red-500',   text: 'text-red-700',   badge: 'bg-red-100 text-red-700',   dropBg: 'bg-red-100/60'   },
-  purple: { bg: 'bg-purple-50', border: 'border-purple-200', accent: 'bg-purple-500', text: 'text-purple-700', badge: 'bg-purple-100 text-purple-700', dropBg: 'bg-purple-100/60' },
-  gray:   { bg: 'bg-gray-50',   border: 'border-gray-200',  accent: 'bg-gray-400',  text: 'text-gray-600',  badge: 'bg-gray-100 text-gray-600',  dropBg: 'bg-gray-100/60'  },
-  indigo: { bg: 'bg-indigo-50', border: 'border-indigo-200', accent: 'bg-indigo-500', text: 'text-indigo-700', badge: 'bg-indigo-100 text-indigo-700', dropBg: 'bg-indigo-100/60' },
-  pink:   { bg: 'bg-pink-50',   border: 'border-pink-200',  accent: 'bg-pink-500',  text: 'text-pink-700',  badge: 'bg-pink-100 text-pink-700',  dropBg: 'bg-pink-100/60'  },
-  orange: { bg: 'bg-orange-50', border: 'border-orange-200', accent: 'bg-orange-500', text: 'text-orange-700', badge: 'bg-orange-100 text-orange-700', dropBg: 'bg-orange-100/60' },
+  blue:   { bg: 'bg-blue-100',   border: 'border-blue-200',  accent: 'bg-blue-500',  text: 'text-blue-700',  badge: 'bg-blue-100 text-blue-700',  dropBg: 'bg-blue-100/60'  },
+  green:  { bg: 'bg-emerald-100', border: 'border-emerald-200', accent: 'bg-emerald-500', text: 'text-emerald-700', badge: 'bg-emerald-100 text-emerald-700', dropBg: 'bg-emerald-100/60' },
+  amber:  { bg: 'bg-amber-100',  border: 'border-amber-200', accent: 'bg-amber-500', text: 'text-amber-700', badge: 'bg-amber-100 text-amber-700', dropBg: 'bg-amber-100/60' },
+  red:    { bg: 'bg-red-100',    border: 'border-red-200',   accent: 'bg-red-500',   text: 'text-red-700',   badge: 'bg-red-100 text-red-700',   dropBg: 'bg-red-100/60'   },
+  purple: { bg: 'bg-purple-100', border: 'border-purple-200', accent: 'bg-purple-500', text: 'text-purple-700', badge: 'bg-purple-100 text-purple-700', dropBg: 'bg-purple-100/60' },
+  gray:   { bg: 'bg-gray-100',   border: 'border-gray-200',  accent: 'bg-gray-400',  text: 'text-gray-600',  badge: 'bg-gray-100 text-gray-600',  dropBg: 'bg-gray-100/60'  },
+  indigo: { bg: 'bg-indigo-100', border: 'border-indigo-200', accent: 'bg-indigo-500', text: 'text-indigo-700', badge: 'bg-indigo-100 text-indigo-700', dropBg: 'bg-indigo-100/60' },
+  pink:   { bg: 'bg-pink-100',   border: 'border-pink-200',  accent: 'bg-pink-500',  text: 'text-pink-700',  badge: 'bg-pink-100 text-pink-700',  dropBg: 'bg-pink-100/60'  },
+  orange: { bg: 'bg-orange-100', border: 'border-orange-200', accent: 'bg-orange-500', text: 'text-orange-700', badge: 'bg-orange-100 text-orange-700', dropBg: 'bg-orange-100/60' },
 }
 
 const DEFAULT_COLORS = COLOR_MAP.gray

@@ -1,5 +1,7 @@
 import api, { legacy, Legacy } from './api'
 import backendApi from './backend-api'
+import { superCoutService } from './superCoutService'
+import { coutOuvertureService } from './coutOuvertureService'
 
 function extractItems(data) {
   if (Array.isArray(data)) return data
@@ -101,7 +103,7 @@ export const KANBAN_TICKET_STATUSES = {
   NEW:         1,
   IN_PROGRESS: 2,
   CLOSED:      6,
-}
+};
 
 const KANBAN_CUSTOMIZATION_STORAGE_KEY = 'glpi.frontoffice.kanban.customization.v1'
 
@@ -116,7 +118,7 @@ const DEFAULT_KANBAN_CUSTOMIZATION = {
     [KANBAN_TICKET_STATUSES.IN_PROGRESS]: 'En cours (Attribué)',
     [KANBAN_TICKET_STATUSES.CLOSED]: 'Terminé (Clos)',
   },
-}
+};
 
 const ALLOWED_KANBAN_COLORS = new Set([
   'blue',
@@ -266,6 +268,15 @@ export function getMoveDialogConfig({ fromStatus, toStatus }) {
   const to   = Number(toStatus)
   if (Number.isNaN(from) || Number.isNaN(to) || from === to) return null
 
+  // Case: moving from CLOSED (6) to IN_PROGRESS (2)
+  if (from === KANBAN_TICKET_STATUSES.CLOSED && to === KANBAN_TICKET_STATUSES.IN_PROGRESS) {
+    return {
+      title: 'Réouvrir le ticket',
+      type: 'reopen', // Special type for our custom dialog
+      fields: []
+    }
+  }
+
   if (to === KANBAN_TICKET_STATUSES.IN_PROGRESS) {
     return {
       title: 'Passer en cours',
@@ -280,8 +291,9 @@ export function getMoveDialogConfig({ fromStatus, toStatus }) {
     return {
       title: 'Clôturer le ticket',
       fields: [
+        { key: 'superCout', label: 'Super cout (optionnel)', type: 'number', required: false },
         { key: 'solution', label: 'Solution / note de clôture (optionnel)', type: 'textarea', required: false },
-        { key: 'comment',  label: 'Commentaire (optionnel)',                type: 'textarea', required: false },
+        { key: 'comment', label: 'Commentaire (optionnel)', type: 'textarea', required: false },
       ],
     }
   }
@@ -432,6 +444,56 @@ export async function updateTicketStatus(ticketId, toStatus, extra = {}, oldStat
     console.error('Failed to save ticket history:', error)
   }
 
+  const superCoutRaw = extra?.superCout
+  const superCoutValue = superCoutRaw != null && String(superCoutRaw).trim().length > 0
+    ? Number(String(superCoutRaw).replace(',', '.'))
+    : null
+  if (Number(toStatus) === KANBAN_TICKET_STATUSES.CLOSED && Number.isFinite(superCoutValue)) {
+    try {
+      await backendApi.post('/api/super-cout', {
+        ticketId: Number(ticketId),
+        cout: superCoutValue,
+      })
+    } catch (error) {
+      console.error('Failed to save super cout:', error)
+    }
+  }
+
+  // Handle annulation (delete last super cout)
+  if (extra?.action === 'annulation') {
+    try {
+      const superCouts = await superCoutService.getByTicketId(Number(ticketId))
+      if (superCouts && superCouts.length > 0) {
+        // Get the last super cout
+        const lastSuperCout = superCouts[superCouts.length - 1]
+        await superCoutService.delete(lastSuperCout.id)
+      }
+    } catch (error) {
+      console.error('Failed to delete super cout:', error)
+    }
+  }
+
+  // Handle réouverture (create cout ouverture)
+  if (extra?.action === 'reouverture' && extra?.pourcentage != null) {
+    try {
+      const superCouts = await superCoutService.getByTicketId(Number(ticketId))
+      if (superCouts && superCouts.length > 0) {
+        const lastSuperCout = superCouts[superCouts.length - 1]
+        const pourcentage = Number(String(extra.pourcentage).replace(',', '.'))
+        const coutOuverture = (lastSuperCout.cout * pourcentage) / 100
+        
+        await coutOuvertureService.create(
+          Number(ticketId),
+          coutOuverture,
+          pourcentage,
+          lastSuperCout.cout
+        )
+      }
+    } catch (error) {
+      console.error('Failed to create cout ouverture:', error)
+    }
+  }
+
   try {
     return await getTicketDetails(ticketId)
   } catch {
@@ -447,6 +509,18 @@ export async function getTicketHistory(ticketId) {
     console.error('Failed to fetch ticket history:', error)
     return []
   }
+}
+
+export async function fetchAllUsers() {
+  const users = await fetchAll('/User')
+  return (users || [])
+    .filter((u) => !isDeletedOrTemplate(u))
+    .map((u) => ({
+      id: Number(u.id),
+      name: u.realname && u.firstname
+        ? `${u.firstname} ${u.realname}`
+        : u.realname || u.firstname || u.name || `Utilisateur #${u.id}`,
+    }))
 }
 
 export async function exportElementListToPdf(elements, title) {
