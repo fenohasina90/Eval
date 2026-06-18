@@ -1,0 +1,7 @@
+- Terminer le ticket 1 avec supercout 50
+- Terminer ticket 2 avec supercout 150
+- Ouvrir ticket 1 avec pourcentage 5% et mode 1
+- Terminer ticket 1 avec supercout 46
+- Ouvrir ticket 1 avec pourcentage 10% et mode 4
+- Ouvrir ticket 2 avec pourcentage 10% et mode 3
+- Terminer ticket 2 avec supercout 300

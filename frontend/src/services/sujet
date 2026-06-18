@@ -1,0 +1,13 @@
+Nouvelle page pour import avec les colonnes suivant
+- ticket
+- mvt
+- valeur
+
+ex: 
+2,open,5 : reouverture du ticket 2 avec pourcentage 
+2,cancel, : Annulation de ticket 2
+2,close, 100 : Le ticket 2 est Terminer avec une super cout 100
+
+
+Lorsqu'on clique sur l'Item type : ordinateur,ecran,... le detail s'affiche
+les details a afficher sont : Somme Cout, Somme superCout, Somme cout ouverture, Somme Total de chaque produit qui est dans cette itemType

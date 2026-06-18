@@ -50,6 +50,17 @@ export function Tbody({ children, className = '', ...props }) {
   )
 }
 
+export function Tfoot({ children, className = '', ...props }) {
+  return (
+    <tfoot
+      className={`divide-y divide-gray-100 ${className}`}
+      {...props}
+    >
+      {children}
+    </tfoot>
+  )
+}
+
 export function Tr({ children, className = '', ...props }) {
   return (
     <tr

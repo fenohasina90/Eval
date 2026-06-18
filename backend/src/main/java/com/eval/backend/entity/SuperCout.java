@@ -1,5 +1,7 @@
 package com.eval.backend.entity;
 
+import java.time.LocalDateTime;
+
 import jakarta.persistence.*;
 
 @Entity
@@ -15,6 +17,9 @@ public class SuperCout {
 
     @Column(name = "cout", nullable = false)
     private Double cout;
+
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
 
     // Getters and setters
     public Long getId() {
@@ -39,5 +44,13 @@ public class SuperCout {
 
     public void setCout(Double cout) {
         this.cout = cout;
+    }
+
+    public LocalDateTime getCreatedAt(){
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
     }
 }

@@ -8,5 +8,5 @@ import java.util.List;
 
 @Repository
 public interface CoutOuvertureRepository extends JpaRepository<CoutOuverture, Long> {
-    List<CoutOuverture> findByTicketId(Long ticketId);
+    List<CoutOuverture> findByTicketIdOrderByCreatedAtAsc(Long ticketId);
 }

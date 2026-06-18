@@ -407,6 +407,27 @@ export async function getTicketActors(ticketId) {
   return { requesters, assignees, observers }
 }
 
+// Helper function to calculate super cout based on mode
+function calculateSuperCout(superCouts, mode) {
+  if (!superCouts || superCouts.length === 0) return 0
+  const couts = superCouts.map(sc => Number(sc.cout) || 0)
+  console.log("LONGUEUR DE TABLEAU SUPER COUT : "+couts.length);
+  
+  switch (mode) {
+    case '1': // Mode 1: Dernier super cout
+      return couts[couts.length - 1]
+    case '2': // Mode 2: Premier super cout
+      return couts[0]
+    case '3': // Mode 3: Moyenne des super cout
+      const sum = couts.reduce((a, b) => a + b, 0)
+      return sum / couts.length
+    case '4': // Mode 4: Somme des super cout
+      return couts.reduce((a, b) => a + b, 0)
+    default:
+      return couts[couts.length - 1]
+  }
+}
+
 export async function updateTicketStatus(ticketId, toStatus, extra = {}, oldStatus = null) {
   const basePayload = compactObject({
     id:     Number(ticketId),
@@ -430,6 +451,17 @@ export async function updateTicketStatus(ticketId, toStatus, extra = {}, oldStat
     }
   }
 
+  // Build comment for history
+  let historyComment = extra.comment || ''
+  
+  if (extra.action === 'annulation') {
+    historyComment = historyComment ? `${historyComment} - Annulation` : 'Annulation'
+  } else if (extra.action === 'reouverture' && extra.pourcentage != null) {
+    historyComment = historyComment 
+      ? `${historyComment} - Réouverture (${extra.pourcentage}%)` 
+      : `Réouverture (${extra.pourcentage}%)`
+  }
+
   // Save history to backend
   try {
     await backendApi.post('/api/ticket-history', {
@@ -437,17 +469,22 @@ export async function updateTicketStatus(ticketId, toStatus, extra = {}, oldStat
       oldStatus: oldStatus,
       newStatus: Number(toStatus),
       changedBy: 'Utilisateur',
-      comment: extra.comment,
+      comment: historyComment,
       solution: extra.solution,
+      superCout: extra.superCout != null ? Number(String(extra.superCout).replace(',', '.')) : null,
     })
   } catch (error) {
     console.error('Failed to save ticket history:', error)
   }
 
   const superCoutRaw = extra?.superCout
-  const superCoutValue = superCoutRaw != null && String(superCoutRaw).trim().length > 0
-    ? Number(String(superCoutRaw).replace(',', '.'))
-    : null
+  let superCoutValue = null
+  if (superCoutRaw !== null && superCoutRaw !== undefined) {
+    const parsed = Number(String(superCoutRaw).replace(',', '.'))
+    if (Number.isFinite(parsed)) {
+      superCoutValue = parsed
+    }
+  }
   if (Number(toStatus) === KANBAN_TICKET_STATUSES.CLOSED && Number.isFinite(superCoutValue)) {
     try {
       await backendApi.post('/api/super-cout', {
@@ -478,15 +515,16 @@ export async function updateTicketStatus(ticketId, toStatus, extra = {}, oldStat
     try {
       const superCouts = await superCoutService.getByTicketId(Number(ticketId))
       if (superCouts && superCouts.length > 0) {
-        const lastSuperCout = superCouts[superCouts.length - 1]
+        const mode = extra.mode || '1'
+        const baseSuperCout = calculateSuperCout(superCouts, mode)
         const pourcentage = Number(String(extra.pourcentage).replace(',', '.'))
-        const coutOuverture = (lastSuperCout.cout * pourcentage) / 100
+        const coutOuverture = (baseSuperCout * pourcentage) / 100
         
         await coutOuvertureService.create(
           Number(ticketId),
           coutOuverture,
           pourcentage,
-          lastSuperCout.cout
+          baseSuperCout
         )
       }
     } catch (error) {

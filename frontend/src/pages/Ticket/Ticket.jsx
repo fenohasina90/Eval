@@ -172,6 +172,7 @@ export default function Ticket() {
                         <Th>Date d'ouverture</Th>
                         <Th>Priorite</Th>
                         <Th>Status</Th>
+                        <th>ExternalID</th>
                         <Th>Action</Th>
                     </Tr>
                 </Thead>
@@ -184,6 +185,7 @@ export default function Ticket() {
                             <Td>{formatDate(ticket.date_creation)}</Td>
                             <Td>{formatPriorityLabel(ticket.priority)}</Td>
                             <Td>{ticket.status?.name || ticket.status}</Td>
+                            <Td>{ticket.external_id}</Td>
                             <Td>
                                 <div className="flex gap-2">
                                     <Button variant="primary" onClick={() => openDetails(ticket)}>Voir</Button>

@@ -88,7 +88,7 @@ export default function TicketKanban() {
 
   const [moveOpen, setMoveOpen] = useState(false)
   const [pendingMove, setPendingMove] = useState(null)
-  const [moveForm, setMoveForm] = useState({ assigneeId: '', comment: '', solution: '', pourcentage: '', action: '' })
+  const [moveForm, setMoveForm] = useState({ assigneeId: '', comment: '', solution: '', pourcentage: '', action: '', mode: '1' })
   const [moveError, setMoveError] = useState('')
   const [moveSubmitting, setMoveSubmitting] = useState(false)
 
@@ -207,7 +207,7 @@ export default function TicketKanban() {
   const resetMoveState = useCallback(() => {
     setMoveOpen(false)
     setPendingMove(null)
-    setMoveForm({ assigneeId: '', comment: '', solution: '', pourcentage: '', action: '' })
+    setMoveForm({ assigneeId: '', comment: '', solution: '', pourcentage: '', action: '', mode: '1' })
     setMoveError('')
     setMoveSubmitting(false)
   }, [])
@@ -374,28 +374,42 @@ export default function TicketKanban() {
                 </Button>
                 <div className="flex-1">
                   <div className="text-sm font-medium text-gray-700 mb-2">Réouverture</div>
-                  <div className="flex gap-2">
-                    <Input
-                      type="number"
-                      placeholder="Pourcentage (%)"
-                      value={moveForm.pourcentage || ''}
-                      onChange={(e) => setMoveForm((prev) => ({ ...prev, pourcentage: e.target.value }))}
-                    />
-                    <Button
-                      variant="primary"
-                      onClick={() => {
-                        if (!pendingMove) return
-                        applyMove({
-                          ticketId: pendingMove.ticketId,
-                          toStatus: pendingMove.toStatus,
-                          extra: { ...moveForm, action: 'reouverture' },
-                          fromStatus: pendingMove.fromStatus
-                        })
-                      }}
-                      disabled={moveSubmitting || !pendingMove || !moveForm.pourcentage}
-                    >
-                      Valider
-                    </Button>
+                  <div className="space-y-2">
+                    <div className="space-y-1">
+                      <div className="text-sm font-medium text-gray-700">Mode de calcul</div>
+                      <Select
+                        value={moveForm.mode || '1'}
+                        onChange={(e) => setMoveForm((prev) => ({ ...prev, mode: e.target.value }))}
+                      >
+                        <option value="1">Mode 1: Dernier super cout</option>
+                        <option value="2">Mode 2: Premier super cout</option>
+                        <option value="3">Mode 3: Moyenne des super cout</option>
+                        <option value="4">Mode 4: Somme des super cout</option>
+                      </Select>
+                    </div>
+                    <div className="flex gap-2">
+                      <Input
+                        type="number"
+                        placeholder="Pourcentage (%)"
+                        value={moveForm.pourcentage || ''}
+                        onChange={(e) => setMoveForm((prev) => ({ ...prev, pourcentage: e.target.value }))}
+                      />
+                      <Button
+                        variant="primary"
+                        onClick={() => {
+                          if (!pendingMove) return
+                          applyMove({
+                            ticketId: pendingMove.ticketId,
+                            toStatus: pendingMove.toStatus,
+                            extra: { ...moveForm, action: 'reouverture' },
+                            fromStatus: pendingMove.fromStatus
+                          })
+                        }}
+                        disabled={moveSubmitting || !pendingMove || !moveForm.pourcentage}
+                      >
+                        Valider
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>

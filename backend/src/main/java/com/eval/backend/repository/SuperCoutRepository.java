@@ -8,5 +8,5 @@ import java.util.List;
 
 @Repository
 public interface SuperCoutRepository extends JpaRepository<SuperCout, Long> {
-    List<SuperCout> findByTicketId(Long ticketId);
+    List<SuperCout> findByTicketIdOrderByCreatedAtAsc(Long ticketId);
 }

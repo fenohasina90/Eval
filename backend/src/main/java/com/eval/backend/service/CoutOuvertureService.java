@@ -6,6 +6,7 @@ import com.eval.backend.repository.CoutOuvertureRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -21,20 +22,21 @@ public class CoutOuvertureService {
         coutOuvertureEntity.setCoutOuverture(coutOuverture);
         coutOuvertureEntity.setPourcentage(pourcentage);
         coutOuvertureEntity.setSuperCoutInitial(superCoutInitial);
+        coutOuvertureEntity.setCreatedAt(LocalDateTime.now());
 
         CoutOuverture saved = repository.save(coutOuvertureEntity);
         return convertToDTO(saved);
     }
 
     public List<CoutOuvertureDTO> getCoutOuverturesByTicketId(Long ticketId) {
-        return repository.findByTicketId(ticketId)
+        return repository.findByTicketIdOrderByCreatedAtAsc(ticketId)
                 .stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
 
     public List<CoutOuvertureDTO> getAllCoutOuvertures() {
-        return repository.findAll()
+        return repository.findAll(org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.ASC, "createdAt"))
                 .stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
