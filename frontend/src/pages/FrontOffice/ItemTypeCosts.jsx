@@ -173,6 +173,23 @@ export default function ItemTypeCosts() {
                 ))
               )}
             </Tbody>
+            <tfoot>
+              <Tr style={{ fontWeight: 'bold', backgroundColor: '#f8f9fa' }}>
+                <Td>Total Général</Td>
+                <Td>
+                  {formatCurrency(itemTypeCosts.reduce((sum, item) => sum + (item.sumCout || 0), 0))}
+                </Td>
+                <Td>
+                  {formatCurrency(itemTypeCosts.reduce((sum, item) => sum + (item.sumSuperCout || 0), 0))}
+                </Td>
+                <Td>
+                  {formatCurrency(itemTypeCosts.reduce((sum, item) => sum + (item.sumCoutOuverture || 0), 0))}
+                </Td>
+                <Td>
+                  {formatCurrency(itemTypeCosts.reduce((sum, item) => sum + (item.sumTotal || 0), 0))}
+                </Td>
+              </Tr>
+            </tfoot>
           </Table>
 
           {typeSelectionne && (
