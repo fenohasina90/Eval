@@ -13,6 +13,7 @@ const navItems = [
   { path: '/front/tickets-kanban', label: 'Tickets (Kanban)', icon: KanbanIcon },
   { path: '/front/item-type-costs', label: 'Cout', icon: KanbanIcon },
   { path: '/front/import-state', label: 'Import', icon: KanbanIcon },
+  { path: '/front/gestion-cout', label: 'Gestion coûts', icon: KanbanIcon },
 ]
 
 export default function FrontOfficeLayout() {

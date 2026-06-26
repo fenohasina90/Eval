@@ -1,5 +1,6 @@
 package com.eval.backend.controller;
 
+import com.eval.backend.service.CoutOuvertureService;
 import com.eval.backend.service.KanbanCustomizationService;
 import com.eval.backend.service.TicketStatusHistoryService;
 import com.eval.backend.service.SuperCoutService;
@@ -20,10 +21,14 @@ public class ResetController {
     @Autowired
     private SuperCoutService superCoutService;
 
+    @Autowired
+    private CoutOuvertureService coutOuvertureService;
+
     @DeleteMapping
     public void resetAll() {
         historyService.deleteAllHistory();
         customizationService.resetCustomization();
         superCoutService.deleteAllSuperCouts();
+        coutOuvertureService.deleteAllCoutOuvertures();
     }
 }

@@ -21,6 +21,16 @@ public class TicketStatusHistoryController {
         return service.getHistoryForTicket(ticketId);
     }
 
+    @GetMapping("/annulations")
+    public List<TicketStatusHistoryDTO> getToutesAnnulations() {
+        return service.getToutesAnnulations();
+    }
+
+    @PostMapping("/restaurer-annulation/{id}")
+    public TicketStatusHistoryDTO restaurerAnnulation(@PathVariable Long id) {
+        return service.restaurerAnnulation(id);
+    }
+
     @PostMapping
     public TicketStatusHistoryDTO createHistory(@RequestBody Map<String, Object> request) {
         Long ticketId = Long.valueOf(request.get("ticketId").toString());

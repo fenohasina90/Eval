@@ -518,13 +518,14 @@ export async function updateTicketStatus(ticketId, toStatus, extra = {}, oldStat
         const mode = extra.mode || '1'
         const baseSuperCout = calculateSuperCout(superCouts, mode)
         const pourcentage = Number(String(extra.pourcentage).replace(',', '.'))
-        const coutOuverture = (baseSuperCout * pourcentage) / 100
+        const coutOuverture = Math.round(((baseSuperCout * pourcentage) / 100) * 1000) / 1000
         
         await coutOuvertureService.create(
           Number(ticketId),
           coutOuverture,
           pourcentage,
-          baseSuperCout
+          baseSuperCout,
+          mode
         )
       }
     } catch (error) {

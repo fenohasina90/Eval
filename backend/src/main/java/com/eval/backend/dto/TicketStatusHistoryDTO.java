@@ -11,13 +11,14 @@ public class TicketStatusHistoryDTO {
     private String comment;
     private String solution;
     private Double superCout;
+    private Boolean annulationRestoree;
     private LocalDateTime changedAt;
 
     // Constructors
     public TicketStatusHistoryDTO() {}
 
     public TicketStatusHistoryDTO(Long id, Long ticketId, Integer oldStatus, Integer newStatus,
-                                    String changedBy, String comment, String solution, Double superCout, LocalDateTime changedAt) {
+                                    String changedBy, String comment, String solution, Double superCout, Boolean annulationRestoree, LocalDateTime changedAt) {
         this.id = id;
         this.ticketId = ticketId;
         this.oldStatus = oldStatus;
@@ -26,6 +27,7 @@ public class TicketStatusHistoryDTO {
         this.comment = comment;
         this.solution = solution;
         this.superCout = superCout;
+        this.annulationRestoree = annulationRestoree;
         this.changedAt = changedAt;
     }
 
@@ -92,6 +94,14 @@ public class TicketStatusHistoryDTO {
 
     public void setSuperCout(Double superCout) {
         this.superCout = superCout;
+    }
+
+    public Boolean getAnnulationRestoree() {
+        return annulationRestoree;
+    }
+
+    public void setAnnulationRestoree(Boolean annulationRestoree) {
+        this.annulationRestoree = annulationRestoree;
     }
 
     public LocalDateTime getChangedAt() {

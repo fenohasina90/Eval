@@ -32,6 +32,9 @@ public class TicketStatusHistory {
     @Column(name = "super_cout")
     private Double superCout;
 
+    @Column(name = "annulation_restoree", nullable = false)
+    private Boolean annulationRestoree = false;
+
     @Column(name = "changed_at", nullable = false, updatable = false)
     private LocalDateTime changedAt;
 
@@ -103,6 +106,14 @@ public class TicketStatusHistory {
 
     public void setSuperCout(Double superCout) {
         this.superCout = superCout;
+    }
+
+    public Boolean getAnnulationRestoree() {
+        return annulationRestoree;
+    }
+
+    public void setAnnulationRestoree(Boolean annulationRestoree) {
+        this.annulationRestoree = annulationRestoree;
     }
 
     public LocalDateTime getChangedAt() {

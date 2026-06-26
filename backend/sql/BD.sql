@@ -32,7 +32,8 @@ CREATE TABLE cout_ouverture (
     cout_ouverture NUMERIC NOT NULL,
     pourcentage NUMERIC NOT NULL,
     super_cout_initial NUMERIC NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    mode TEXT DEFAULT '1'
 );
 
 -- Index pour optimiser les requêtes

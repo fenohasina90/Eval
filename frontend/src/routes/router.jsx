@@ -18,6 +18,7 @@ import TicketKanban from '../pages/FrontOffice/TicketKanban'
 import TicketHistory from '../pages/FrontOffice/TicketHistory'
 import ItemTypeCosts from '../pages/FrontOffice/ItemTypeCosts'
 import ImportStateTicket from '../pages/FrontOffice/ImportStateTicket'
+import GestionCout from '../pages/FrontOffice/GestionCout'
 
 const router = createBrowserRouter([
   {
@@ -47,6 +48,7 @@ const router = createBrowserRouter([
       { path: 'ticket-history/:ticketId', element: <TicketHistory /> },
       { path: 'item-type-costs', element: <ItemTypeCosts /> },
       { path: 'import-state', element: <ImportStateTicket /> },
+      { path: 'gestion-cout', element: <GestionCout /> },
     ]
   }
 ])

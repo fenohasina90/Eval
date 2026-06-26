@@ -24,6 +24,9 @@ public class CoutOuverture {
     @Column(name = "super_cout_initial", nullable = false)
     private Double superCoutInitial;
 
+    @Column(name = "mode", length = 10)
+  private String mode = "1";
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
@@ -66,6 +69,14 @@ public class CoutOuverture {
 
     public void setSuperCoutInitial(Double superCoutInitial) {
         this.superCoutInitial = superCoutInitial;
+    }
+
+    public String getMode() {
+        return mode;
+    }
+
+    public void setMode(String mode) {
+        this.mode = mode;
     }
 
     public LocalDateTime getCreatedAt(){

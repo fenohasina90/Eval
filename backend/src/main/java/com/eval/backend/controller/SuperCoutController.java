@@ -26,11 +26,22 @@ public class SuperCoutController {
         return service.getSuperCoutsByTicketId(ticketId);
     }
 
+    @GetMapping("/{id}")
+    public SuperCoutDTO getSuperCoutById(@PathVariable Long id) {
+        return service.getSuperCoutById(id);
+    }
+
     @PostMapping
     public SuperCoutDTO createSuperCout(@RequestBody Map<String, Object> request) {
         Long ticketId = Long.valueOf(request.get("ticketId").toString());
         Double cout = Double.valueOf(request.get("cout").toString());
         return service.createSuperCout(ticketId, cout);
+    }
+
+    @PutMapping("/{id}")
+    public SuperCoutDTO updateSuperCout(@PathVariable Long id, @RequestBody Map<String, Object> request) {
+        Double cout = Double.valueOf(request.get("cout").toString());
+        return service.updateSuperCout(id, cout);
     }
 
     @DeleteMapping("/{id}")

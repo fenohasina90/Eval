@@ -4,6 +4,7 @@ import com.eval.backend.dto.TicketStatusHistoryDTO;
 import com.eval.backend.entity.TicketStatusHistory;
 import com.eval.backend.repository.TicketStatusHistoryRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -14,6 +15,14 @@ public class TicketStatusHistoryService {
 
     @Autowired
     private TicketStatusHistoryRepository repository;
+
+    @Autowired
+    @Lazy
+    private SuperCoutService superCoutService;
+
+    @Autowired
+    @Lazy
+    private CoutOuvertureService coutOuvertureService;
 
     public TicketStatusHistoryDTO createHistory(Long ticketId, Integer oldStatus, Integer newStatus,
                                                   String changedBy, String comment, String solution, Double superCout) {
@@ -36,6 +45,41 @@ public class TicketStatusHistoryService {
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
+    
+    public List<TicketStatusHistoryDTO> getToutesAnnulations() {
+        return repository.findAll()
+                .stream()
+                .filter(h -> h.getComment() != null && h.getComment().contains("Annulation") && !h.getAnnulationRestoree())
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
+    
+    public TicketStatusHistoryDTO restaurerAnnulation(Long id) {
+        return repository.findById(id).map(history -> {
+            // Mark as restored
+            history.setAnnulationRestoree(true);
+            
+            // Re-add the super cout (if present) at original time
+            if (history.getSuperCout() != null) {
+                superCoutService.createSuperCout(
+                        history.getTicketId(),
+                        history.getSuperCout(),
+                        history.getChangedAt()
+                );
+            }
+            
+            // Recalculate all cout ouvertures after this date with mode 3 or 4
+            var toutesReouvertures = coutOuvertureService.getCoutOuverturesByTicketId(history.getTicketId());
+            for (var reouverture : toutesReouvertures) {
+                if (reouverture.getCreatedAt().isAfter(history.getChangedAt()) &&
+                    (reouverture.getMode().equals("3") || reouverture.getMode().equals("4"))) {
+                    coutOuvertureService.recalculateCoutOuverture(reouverture.getId());
+                }
+            }
+            
+            return convertToDTO(repository.save(history));
+        }).orElse(null);
+    }
 
     public void deleteAllHistory() {
         repository.deleteAll();
@@ -51,6 +95,7 @@ public class TicketStatusHistoryService {
                 history.getComment(),
                 history.getSolution(),
                 history.getSuperCout(),
+                history.getAnnulationRestoree(),
                 history.getChangedAt()
         );
     }
